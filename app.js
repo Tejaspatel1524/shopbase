@@ -1,23 +1,23 @@
 /* ============================================
-   ShopBase — Application Logic (v2)
-   Receipt, WhatsApp Share & Shop Settings
+   ShopBase — Application Logic (v3)
+   Auth, Profile, Receipt & Customer Management
    ============================================ */
 
 (function () {
     'use strict';
 
-    // ===== DATA LAYER =====
+    // ===== STORAGE KEYS =====
     const STORAGE_KEY = 'shopbase_data';
     const SETTINGS_KEY = 'shopbase_settings';
+    const AUTH_KEY = 'shopbase_auth';
 
+    // ===== DATA LAYER =====
     function getData() {
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (!raw) return { customers: [], version: 1 };
             return JSON.parse(raw);
-        } catch {
-            return { customers: [], version: 1 };
-        }
+        } catch { return { customers: [], version: 1 }; }
     }
 
     function saveData(data) {
@@ -27,15 +27,29 @@
     function getSettings() {
         try {
             const raw = localStorage.getItem(SETTINGS_KEY);
-            if (!raw) return { shopName: 'My Shop', shopPhone: '', shopAddress: '', gst: '', tagline: '' };
+            if (!raw) return { shopName: '', shopPhone: '', shopAddress: '', gst: '', tagline: '', category: 'general' };
             return JSON.parse(raw);
-        } catch {
-            return { shopName: 'My Shop', shopPhone: '', shopAddress: '', gst: '', tagline: '' };
-        }
+        } catch { return { shopName: '', shopPhone: '', shopAddress: '', gst: '', tagline: '', category: 'general' }; }
     }
 
     function saveSettings(settings) {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+    function getAuth() {
+        try {
+            const raw = localStorage.getItem(AUTH_KEY);
+            if (!raw) return null;
+            return JSON.parse(raw);
+        } catch { return null; }
+    }
+
+    function saveAuth(auth) {
+        localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
+    }
+
+    function clearAuth() {
+        localStorage.removeItem(AUTH_KEY);
     }
 
     function generateId() {
@@ -53,15 +67,20 @@
     let editingCustomerId = null;
     let statsVisible = false;
     let currentReceiptData = null;
+    let authMode = 'login'; // 'login' or 'signup'
+    let pendingAuthData = {};
 
     // ===== DOM REFS =====
     const $ = (sel) => document.querySelector(sel);
     const $$ = (sel) => document.querySelectorAll(sel);
 
     const splash = $('#splash-screen');
+    const authContainer = $('#auth-container');
     const app = $('#app');
+
     const viewHome = $('#view-home');
     const viewProfile = $('#view-profile');
+    const viewOwner = $('#view-owner');
 
     const searchInput = $('#search-input');
     const searchClear = $('#search-clear');
@@ -93,6 +112,7 @@
     const modalDelete = $('#modal-delete');
     const modalReceipt = $('#modal-receipt');
     const modalSettings = $('#modal-settings');
+    const modalLogout = $('#modal-logout');
     const formCustomer = $('#form-customer');
     const formTransaction = $('#form-transaction');
     const formSettings = $('#form-settings');
@@ -101,23 +121,291 @@
     const toastEl = $('#toast');
     const toastMessage = $('#toast-message');
 
-    // ===== SPLASH =====
+    // ===== INIT =====
     function initApp() {
         setTimeout(() => {
             splash.classList.add('hidden');
-            app.classList.remove('hidden');
-            renderCustomerList();
 
-            // First-time setup: prompt to configure shop
-            const settings = getSettings();
-            if (settings.shopName === 'My Shop') {
-                setTimeout(() => {
-                    showToast('👋 Welcome! Set up your shop first');
-                    setTimeout(() => openSettingsModal(), 1200);
-                }, 600);
+            const auth = getAuth();
+            if (auth && auth.isLoggedIn) {
+                showMainApp();
+            } else {
+                showAuth();
             }
         }, 2200);
     }
+
+    function showAuth() {
+        authContainer.classList.remove('hidden');
+        app.classList.add('hidden');
+        showAuthStep('auth-welcome');
+    }
+
+    function showMainApp() {
+        authContainer.classList.add('hidden');
+        app.classList.remove('hidden');
+        updateHeaderFromAuth();
+        renderCustomerList();
+    }
+
+    function updateHeaderFromAuth() {
+        const auth = getAuth();
+        const settings = getSettings();
+
+        // Update header shop name
+        const headerShopName = $('#header-shop-name');
+        if (settings.shopName) {
+            headerShopName.textContent = settings.shopName;
+        } else {
+            headerShopName.textContent = 'Your Customers, Your Data';
+        }
+
+        // Update owner avatar
+        const avatarBtn = $('#owner-avatar-initial');
+        if (auth && auth.user && auth.user.name) {
+            avatarBtn.textContent = getInitials(auth.user.name);
+        } else {
+            avatarBtn.textContent = 'U';
+        }
+    }
+
+    // ===== AUTH FLOW =====
+    function showAuthStep(stepId) {
+        $$('.auth-step').forEach(s => s.classList.remove('active'));
+        const step = $(`#${stepId}`);
+        if (step) step.classList.add('active');
+    }
+
+    // Look up user by phone number
+    function findUserByPhone(phone) {
+        const cleanPhone = phone.replace(/\D/g, '');
+        try {
+            const users = JSON.parse(localStorage.getItem('shopbase_users') || '[]');
+            return users.find(u => u.phone.replace(/\D/g, '') === cleanPhone);
+        } catch { return null; }
+    }
+
+    // Look up user by email
+    function findUserByEmail(email) {
+        try {
+            const users = JSON.parse(localStorage.getItem('shopbase_users') || '[]');
+            return users.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
+        } catch { return null; }
+    }
+
+    // Save user to users list
+    function saveUser(userData) {
+        try {
+            const users = JSON.parse(localStorage.getItem('shopbase_users') || '[]');
+            const existing = users.findIndex(u => u.id === userData.id);
+            if (existing >= 0) {
+                users[existing] = userData;
+            } else {
+                users.push(userData);
+            }
+            localStorage.setItem('shopbase_users', JSON.stringify(users));
+        } catch { /* ignore */ }
+    }
+
+    // Complete login
+    function completeLogin(user) {
+        saveAuth({ isLoggedIn: true, user });
+        showMainApp();
+        showToast(`Welcome back, ${user.name.split(' ')[0]}! 👋`);
+    }
+
+    // Complete signup (go to profile setup)
+    function goToSetup() {
+        showAuthStep('auth-setup');
+    }
+
+    function completeSetup(name, shopName, category, address) {
+        const userId = generateId();
+        const user = {
+            id: userId,
+            name,
+            phone: pendingAuthData.phone || '',
+            email: pendingAuthData.email || '',
+            authMethod: pendingAuthData.method || 'phone',
+            pin: pendingAuthData.pin || '',
+            createdAt: Date.now()
+        };
+
+        // Save user
+        saveUser(user);
+
+        // Save auth
+        saveAuth({ isLoggedIn: true, user });
+
+        // Save settings
+        const settings = getSettings();
+        settings.shopName = shopName;
+        settings.shopPhone = user.phone;
+        settings.category = category;
+        settings.shopAddress = address;
+        saveSettings(settings);
+
+        showMainApp();
+        showToast(`Welcome to ShopBase, ${name.split(' ')[0]}! 🎉`);
+    }
+
+    // ===== AUTH EVENT LISTENERS =====
+
+    // Welcome → Phone
+    $('#btn-auth-phone').addEventListener('click', () => {
+        pendingAuthData = { method: 'phone' };
+        showAuthStep('auth-phone');
+        setTimeout(() => $('#auth-phone-input').focus(), 200);
+    });
+
+    // Welcome → Google
+    $('#btn-auth-google').addEventListener('click', () => {
+        pendingAuthData = { method: 'google' };
+        showAuthStep('auth-google-step');
+        setTimeout(() => $('#auth-google-email').focus(), 200);
+    });
+
+    // Back buttons
+    $('#btn-phone-back').addEventListener('click', () => showAuthStep('auth-welcome'));
+    $('#btn-pin-back').addEventListener('click', () => {
+        if (pendingAuthData.method === 'phone') {
+            showAuthStep('auth-phone');
+        } else {
+            showAuthStep('auth-welcome');
+        }
+    });
+    $('#btn-google-back').addEventListener('click', () => showAuthStep('auth-welcome'));
+
+    // Phone form submit
+    $('#form-phone').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const phone = $('#auth-phone-input').value.replace(/\s/g, '');
+        if (phone.length < 10) {
+            showToast('Please enter a valid phone number');
+            return;
+        }
+
+        pendingAuthData.phone = phone;
+        const existingUser = findUserByPhone(phone);
+
+        if (existingUser) {
+            // Login flow
+            authMode = 'login';
+            pendingAuthData.existingUser = existingUser;
+            $('#pin-title').textContent = 'Enter your PIN';
+            $('#pin-desc').textContent = 'Enter your 4-digit PIN to login';
+            $('#btn-pin-submit').textContent = 'Login';
+        } else {
+            // Signup flow
+            authMode = 'signup';
+            $('#pin-title').textContent = 'Create a PIN';
+            $('#pin-desc').textContent = 'Set a 4-digit PIN to secure your account';
+            $('#btn-pin-submit').textContent = 'Continue';
+        }
+
+        $('#pin-error').classList.add('hidden');
+        clearPinBoxes();
+        showAuthStep('auth-pin');
+        setTimeout(() => $$('.pin-box')[0].focus(), 200);
+    });
+
+    // PIN boxes behavior
+    $$('.pin-box').forEach((box, index) => {
+        box.addEventListener('input', (e) => {
+            const val = e.target.value.replace(/\D/g, '');
+            e.target.value = val;
+
+            if (val && index < 3) {
+                $$('.pin-box')[index + 1].focus();
+            }
+
+            // Update filled state
+            e.target.classList.toggle('filled', val.length > 0);
+        });
+
+        box.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                const prev = $$('.pin-box')[index - 1];
+                prev.focus();
+                prev.value = '';
+                prev.classList.remove('filled');
+            }
+        });
+
+        box.addEventListener('focus', (e) => {
+            e.target.select();
+        });
+    });
+
+    function getPinValue() {
+        return Array.from($$('.pin-box')).map(b => b.value).join('');
+    }
+
+    function clearPinBoxes() {
+        $$('.pin-box').forEach(b => { b.value = ''; b.classList.remove('filled'); });
+    }
+
+    // PIN form submit
+    $('#form-pin').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const pin = getPinValue();
+
+        if (pin.length !== 4) {
+            showToast('Please enter a 4-digit PIN');
+            return;
+        }
+
+        if (authMode === 'login') {
+            // Verify PIN
+            if (pendingAuthData.existingUser && pendingAuthData.existingUser.pin === pin) {
+                completeLogin(pendingAuthData.existingUser);
+            } else {
+                $('#pin-error').classList.remove('hidden');
+                clearPinBoxes();
+                setTimeout(() => $$('.pin-box')[0].focus(), 100);
+            }
+        } else {
+            // Signup: store PIN and go to setup
+            pendingAuthData.pin = pin;
+            goToSetup();
+        }
+    });
+
+    // Google form submit
+    $('#form-google').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = $('#auth-google-email').value.trim();
+
+        if (!email) {
+            showToast('Please enter your email');
+            return;
+        }
+
+        pendingAuthData.email = email;
+        const existingUser = findUserByEmail(email);
+
+        if (existingUser) {
+            completeLogin(existingUser);
+        } else {
+            goToSetup();
+        }
+    });
+
+    // Setup form submit
+    $('#form-setup').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = $('#setup-name').value.trim();
+        const shopName = $('#setup-shop').value.trim();
+        const category = $('#setup-category').value;
+        const address = $('#setup-address').value.trim();
+
+        if (!name || !shopName) {
+            showToast('Name and shop name are required');
+            return;
+        }
+
+        completeSetup(name, shopName, category, address);
+    });
 
     // ===== TOAST =====
     let toastTimer;
@@ -150,15 +438,18 @@
         renderProfile();
     }
 
+    function goToOwnerProfile() {
+        showView('#view-owner');
+        renderOwnerProfile();
+    }
+
     // ===== RENDER CUSTOMER LIST =====
     function renderCustomerList(filter = '') {
         const data = getData();
         let customers = data.customers || [];
 
-        // Sort: most recent first
         customers.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
-        // Filter
         if (filter) {
             const q = filter.toLowerCase().trim();
             customers = customers.filter(c =>
@@ -186,12 +477,7 @@
 
         noResults.classList.add('hidden');
         listCount.textContent = customers.length;
-
-        if (filter) {
-            listTitle.textContent = 'Search Results';
-        } else {
-            listTitle.textContent = 'All Customers';
-        }
+        listTitle.textContent = filter ? 'Search Results' : 'All Customers';
 
         customers.forEach((customer, index) => {
             const initials = getInitials(customer.name);
@@ -207,7 +493,7 @@
 
             const item = document.createElement('div');
             item.className = 'customer-item';
-            item.style.animationDelay = `${index * 0.05}s`;
+            item.style.animationDelay = `${index * 0.04}s`;
             item.setAttribute('role', 'button');
             item.setAttribute('tabindex', '0');
             item.innerHTML = `
@@ -217,17 +503,14 @@
                     <div class="customer-phone">${formatPhone(customer.phone)}</div>
                 </div>
                 <div class="customer-meta">
-                    <div class="customer-txn-count">${txns.length} transaction${txns.length !== 1 ? 's' : ''}</div>
+                    <div class="customer-txn-count">${txns.length} txn${txns.length !== 1 ? 's' : ''}</div>
                     <div class="customer-last-visit">${lastVisit}</div>
                     ${totalPending > 0 ? `<div class="customer-pending-badge">₹${formatAmount(totalPending)} due</div>` : ''}
                 </div>
             `;
 
             item.addEventListener('click', () => goToProfile(customer.id));
-            item.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') goToProfile(customer.id);
-            });
-
+            item.addEventListener('keydown', (e) => { if (e.key === 'Enter') goToProfile(customer.id); });
             customerListEl.appendChild(item);
         });
 
@@ -238,13 +521,9 @@
     function renderProfile() {
         const data = getData();
         const customer = data.customers.find(c => c.id === currentCustomerId);
-        if (!customer) {
-            goHome();
-            return;
-        }
+        if (!customer) { goHome(); return; }
 
-        const initials = getInitials(customer.name);
-        profileAvatar.textContent = initials;
+        profileAvatar.textContent = getInitials(customer.name);
         profileName.textContent = customer.name;
         profilePhone.textContent = `📞 ${formatPhone(customer.phone)}`;
         profilePhone.href = `tel:${customer.phone}`;
@@ -280,6 +559,35 @@
         renderTransactions(txns, customer);
     }
 
+    // ===== RENDER OWNER PROFILE =====
+    function renderOwnerProfile() {
+        const auth = getAuth();
+        const settings = getSettings();
+
+        if (auth && auth.user) {
+            $('#owner-profile-avatar').textContent = getInitials(auth.user.name);
+            $('#owner-profile-name').textContent = auth.user.name;
+
+            const contact = auth.user.email || (auth.user.phone ? formatPhone(auth.user.phone) : '');
+            $('#owner-profile-contact').textContent = contact;
+
+            const method = auth.user.authMethod === 'google' ? 'Google Account' : 'Phone Login';
+            $('#owner-profile-method').textContent = method;
+        }
+
+        const categoryLabels = {
+            general: 'General Store', electronics: 'Electronics', clothing: 'Clothing & Fashion',
+            grocery: 'Grocery', pharmacy: 'Pharmacy', hardware: 'Hardware',
+            mobile: 'Mobile & Accessories', jewellery: 'Jewellery', other: 'Other'
+        };
+
+        $('#owner-shop-name').textContent = settings.shopName || '--';
+        $('#owner-shop-category').textContent = categoryLabels[settings.category] || settings.category || '--';
+        $('#owner-shop-phone').textContent = settings.shopPhone ? formatPhone(settings.shopPhone) : '--';
+        $('#owner-shop-address').textContent = settings.shopAddress || '--';
+        $('#owner-shop-gst').textContent = settings.gst || '--';
+    }
+
     // ===== RENDER TRANSACTIONS =====
     function renderTransactions(transactions, customer) {
         transactionListEl.innerHTML = '';
@@ -290,14 +598,12 @@
         }
 
         emptyTransactions.classList.add('hidden');
-
-        // Sort by date descending
         const sorted = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
 
         sorted.forEach((txn, index) => {
             const item = document.createElement('div');
             item.className = 'transaction-item';
-            item.style.animationDelay = `${index * 0.05}s`;
+            item.style.animationDelay = `${index * 0.04}s`;
 
             let amountClass = '';
             if (txn.status === 'pending') amountClass = 'pending';
@@ -320,41 +626,24 @@
                 ${partialInfo}
                 ${txn.notes ? `<div class="txn-notes">${escapeHtml(txn.notes)}</div>` : ''}
                 <div class="txn-actions">
-                    <button class="txn-action-btn receipt" data-txn-id="${txn.id}" title="View Receipt">
-                        🧾 Receipt
-                    </button>
-                    <button class="txn-action-btn whatsapp" data-txn-id="${txn.id}" title="Share on WhatsApp">
-                        📱 WhatsApp
-                    </button>
-                    <button class="txn-action-btn delete" data-txn-id="${txn.id}" title="Delete">
-                        🗑️ Delete
-                    </button>
+                    <button class="txn-action-btn receipt" data-txn-id="${txn.id}" title="View Receipt">🧾 Receipt</button>
+                    <button class="txn-action-btn whatsapp" data-txn-id="${txn.id}" title="Share on WhatsApp">📱 WhatsApp</button>
+                    <button class="txn-action-btn delete" data-txn-id="${txn.id}" title="Delete">🗑️ Delete</button>
                 </div>
             `;
 
             transactionListEl.appendChild(item);
         });
 
-        // Attach action handlers
+        // Attach handlers
         transactionListEl.querySelectorAll('.txn-action-btn.delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                deleteTransaction(btn.dataset.txnId);
-            });
+            btn.addEventListener('click', (e) => { e.stopPropagation(); deleteTransaction(btn.dataset.txnId); });
         });
-
         transactionListEl.querySelectorAll('.txn-action-btn.receipt').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                showReceipt(btn.dataset.txnId, customer);
-            });
+            btn.addEventListener('click', (e) => { e.stopPropagation(); showReceipt(btn.dataset.txnId, customer); });
         });
-
         transactionListEl.querySelectorAll('.txn-action-btn.whatsapp').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                shareOnWhatsApp(btn.dataset.txnId, customer);
-            });
+            btn.addEventListener('click', (e) => { e.stopPropagation(); shareOnWhatsApp(btn.dataset.txnId, customer); });
         });
     }
 
@@ -365,48 +654,30 @@
 
         const settings = getSettings();
         const receiptNum = generateReceiptNumber();
-
-        // Store current receipt data for sharing
         currentReceiptData = { txn, customer, settings, receiptNum };
 
-        // Fill receipt
         $('#receipt-shop-name').textContent = settings.shopName || 'My Shop';
         $('#receipt-shop-address').textContent = settings.shopAddress || '';
         $('#receipt-shop-phone').textContent = settings.shopPhone ? `📞 ${formatPhone(settings.shopPhone)}` : '';
-
         if (settings.gst) {
             $('#receipt-shop-phone').textContent += ` | GST: ${settings.gst}`;
         }
 
         $('#receipt-number').textContent = receiptNum;
         $('#receipt-date').textContent = `Date: ${formatDateFull(new Date(txn.date).getTime())}`;
-
         $('#receipt-customer-name').textContent = customer.name;
         $('#receipt-customer-phone').textContent = `📞 ${formatPhone(customer.phone)}`;
 
-        // Items
-        const itemsEl = $('#receipt-items');
-        itemsEl.innerHTML = `
-            <tr>
-                <td>${escapeHtml(txn.item)}</td>
-                <td>₹${formatAmount(txn.amount)}</td>
-            </tr>
-        `;
-
-        // Total
+        $('#receipt-items').innerHTML = `<tr><td>${escapeHtml(txn.item)}</td><td>₹${formatAmount(txn.amount)}</td></tr>`;
         $('#receipt-total').textContent = `₹${formatAmount(txn.amount)}`;
 
-        // Status line
         const statusLine = $('#receipt-status-line');
         statusLine.className = 'receipt-status-line ' + txn.status;
-        if (txn.status === 'paid') {
-            statusLine.textContent = '✅ PAID IN FULL';
-        } else if (txn.status === 'pending') {
-            statusLine.textContent = `⏳ PAYMENT PENDING — ₹${formatAmount(txn.amount)}`;
-        } else if (txn.status === 'partial') {
+        if (txn.status === 'paid') statusLine.textContent = '✅ PAID IN FULL';
+        else if (txn.status === 'pending') statusLine.textContent = `⏳ PAYMENT PENDING — ₹${formatAmount(txn.amount)}`;
+        else if (txn.status === 'partial') {
             const paid = txn.paidAmount || 0;
-            const remaining = txn.amount - paid;
-            statusLine.textContent = `🔄 PARTIAL — Paid ₹${formatAmount(paid)}, Due ₹${formatAmount(remaining)}`;
+            statusLine.textContent = `🔄 PARTIAL — Paid ₹${formatAmount(paid)}, Due ₹${formatAmount(txn.amount - paid)}`;
         }
 
         openModal(modalReceipt);
@@ -416,78 +687,49 @@
         const { txn, customer, settings, receiptNum } = data;
         const divider = '━━━━━━━━━━━━━━━━━━━━━━';
 
-        let text = '';
-        text += `🧾 *${settings.shopName || 'My Shop'}*\n`;
+        let text = `🧾 *${settings.shopName || 'My Shop'}*\n`;
         if (settings.shopAddress) text += `📍 ${settings.shopAddress}\n`;
         if (settings.shopPhone) text += `📞 ${formatPhone(settings.shopPhone)}\n`;
-        text += `${divider}\n`;
-        text += `*Receipt #${receiptNum}*\n`;
-        text += `📅 Date: ${formatDateFull(new Date(txn.date).getTime())}\n`;
-        text += `${divider}\n`;
-        text += `*Bill To:*\n`;
-        text += `👤 ${customer.name}\n`;
-        text += `📞 ${formatPhone(customer.phone)}\n`;
-        text += `${divider}\n`;
-        text += `*Item:* ${txn.item}\n`;
-        text += `*Amount:* ₹${formatAmount(txn.amount)}\n`;
-        text += `${divider}\n`;
+        text += `${divider}\n*Receipt #${receiptNum}*\n`;
+        text += `📅 Date: ${formatDateFull(new Date(txn.date).getTime())}\n${divider}\n`;
+        text += `*Bill To:*\n👤 ${customer.name}\n📞 ${formatPhone(customer.phone)}\n${divider}\n`;
+        text += `*Item:* ${txn.item}\n*Amount:* ₹${formatAmount(txn.amount)}\n${divider}\n`;
         text += `*TOTAL: ₹${formatAmount(txn.amount)}*\n`;
 
-        if (txn.status === 'paid') {
-            text += `✅ *PAID IN FULL*\n`;
-        } else if (txn.status === 'pending') {
-            text += `⏳ *PAYMENT PENDING*\n`;
-            text += `💰 Due: ₹${formatAmount(txn.amount)}\n`;
-        } else if (txn.status === 'partial') {
+        if (txn.status === 'paid') text += `✅ *PAID IN FULL*\n`;
+        else if (txn.status === 'pending') text += `⏳ *PAYMENT PENDING*\n💰 Due: ₹${formatAmount(txn.amount)}\n`;
+        else if (txn.status === 'partial') {
             const paid = txn.paidAmount || 0;
-            const remaining = txn.amount - paid;
-            text += `🔄 *PARTIAL PAYMENT*\n`;
-            text += `💰 Paid: ₹${formatAmount(paid)} | Due: ₹${formatAmount(remaining)}\n`;
+            text += `🔄 *PARTIAL PAYMENT*\n💰 Paid: ₹${formatAmount(paid)} | Due: ₹${formatAmount(txn.amount - paid)}\n`;
         }
 
-        if (txn.notes) {
-            text += `\n📝 _${txn.notes}_\n`;
-        }
-
-        text += `${divider}\n`;
-        text += `Thank you for your purchase! 🙏\n`;
-        text += `_Powered by ShopBase_`;
-
+        if (txn.notes) text += `\n📝 _${txn.notes}_\n`;
+        text += `${divider}\nThank you for your purchase! 🙏\n_Powered by ShopBase_`;
         return text;
     }
 
-    // ===== WHATSAPP SHARE =====
+    // ===== WHATSAPP =====
     function shareOnWhatsApp(txnId, customer) {
         const txn = (customer.transactions || []).find(t => t.id === txnId);
         if (!txn) return;
 
         const settings = getSettings();
         const receiptNum = generateReceiptNumber();
-        const data = { txn, customer, settings, receiptNum };
-        const text = generateReceiptText(data);
+        const text = generateReceiptText({ txn, customer, settings, receiptNum });
 
-        // Clean phone number — remove non-digits, add country code if needed
         let phone = customer.phone.replace(/\D/g, '');
-        if (phone.length === 10) {
-            phone = '91' + phone; // Add India country code
-        }
+        if (phone.length === 10) phone = '91' + phone;
 
-        const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-        window.open(url, '_blank');
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
         showToast('Opening WhatsApp... 📱');
     }
 
     function shareCurrentReceiptOnWhatsApp() {
         if (!currentReceiptData) return;
         const text = generateReceiptText(currentReceiptData);
-
         let phone = currentReceiptData.customer.phone.replace(/\D/g, '');
-        if (phone.length === 10) {
-            phone = '91' + phone;
-        }
-
-        const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-        window.open(url, '_blank');
+        if (phone.length === 10) phone = '91' + phone;
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
         showToast('Opening WhatsApp... 📱');
     }
 
@@ -515,13 +757,9 @@
         const data = getData();
         const customer = {
             id: generateId(),
-            name: name.trim(),
-            phone: phone.trim(),
-            email: email.trim(),
-            address: address.trim(),
-            notes: notes.trim(),
-            transactions: [],
-            createdAt: Date.now()
+            name: name.trim(), phone: phone.trim(), email: email.trim(),
+            address: address.trim(), notes: notes.trim(),
+            transactions: [], createdAt: Date.now()
         };
         data.customers.push(customer);
         saveData(data);
@@ -532,10 +770,8 @@
         const data = getData();
         const customer = data.customers.find(c => c.id === id);
         if (customer) {
-            customer.name = name.trim();
-            customer.phone = phone.trim();
-            customer.email = email.trim();
-            customer.address = address.trim();
+            customer.name = name.trim(); customer.phone = phone.trim();
+            customer.email = email.trim(); customer.address = address.trim();
             customer.notes = notes.trim();
             saveData(data);
         }
@@ -553,18 +789,14 @@
         const data = getData();
         const customer = data.customers.find(c => c.id === customerId);
         if (!customer) return;
-
         if (!customer.transactions) customer.transactions = [];
 
         const txn = {
             id: generateId(),
-            item: item.trim(),
-            amount: parseFloat(amount) || 0,
-            date,
-            status,
+            item: item.trim(), amount: parseFloat(amount) || 0,
+            date, status,
             paidAmount: status === 'partial' ? (parseFloat(paidAmount) || 0) : undefined,
-            notes: notes.trim(),
-            createdAt: Date.now()
+            notes: notes.trim(), createdAt: Date.now()
         };
 
         customer.transactions.push(txn);
@@ -576,27 +808,42 @@
         const data = getData();
         const customer = data.customers.find(c => c.id === currentCustomerId);
         if (!customer) return;
-
         customer.transactions = (customer.transactions || []).filter(t => t.id !== txnId);
         saveData(data);
         renderProfile();
         showToast('Transaction deleted');
     }
 
-    // ===== MODALS =====
-    function openModal(modal) {
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+    // ===== EXPORT DATA =====
+    function exportData() {
+        const data = getData();
+        const settings = getSettings();
+        const auth = getAuth();
+
+        const exportObj = {
+            exportDate: new Date().toISOString(),
+            shopName: settings.shopName,
+            owner: auth ? auth.user : null,
+            settings,
+            customers: data.customers
+        };
+
+        const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `shopbase-backup-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Data exported successfully ✓');
     }
 
-    function closeModal(modal) {
-        modal.classList.add('hidden');
-        document.body.style.overflow = '';
-    }
+    // ===== MODALS =====
+    function openModal(modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+    function closeModal(modal) { modal.classList.add('hidden'); document.body.style.overflow = ''; }
 
     function openCustomerModal(editId = null) {
         editingCustomerId = editId;
-
         if (editId) {
             const data = getData();
             const customer = data.customers.find(c => c.id === editId);
@@ -614,15 +861,13 @@
             formCustomer.reset();
             $('#btn-save-customer').textContent = 'Save Customer';
         }
-
         openModal(modalCustomer);
         setTimeout(() => $('#input-name').focus(), 100);
     }
 
     function openTransactionModal() {
         formTransaction.reset();
-        const today = new Date().toISOString().split('T')[0];
-        $('#input-date').value = today;
+        $('#input-date').value = new Date().toISOString().split('T')[0];
         $('#input-status').value = 'paid';
         togglePartialField();
         openModal(modalTransaction);
@@ -643,29 +888,22 @@
     function togglePartialField() {
         const status = $('#input-status').value;
         const group = $('#partial-amount-group');
-        if (status === 'partial') {
-            group.classList.remove('hidden');
-        } else {
-            group.classList.add('hidden');
-        }
+        if (status === 'partial') group.classList.remove('hidden');
+        else group.classList.add('hidden');
     }
 
     // ===== HELPERS =====
     function getInitials(name) {
         if (!name) return '?';
         const parts = name.trim().split(/\s+/);
-        if (parts.length >= 2) {
-            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-        }
+        if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
         return parts[0].slice(0, 2).toUpperCase();
     }
 
     function formatPhone(phone) {
         if (!phone) return '';
         const digits = phone.replace(/\D/g, '');
-        if (digits.length === 10) {
-            return `${digits.slice(0, 5)} ${digits.slice(5)}`;
-        }
+        if (digits.length === 10) return `${digits.slice(0, 5)} ${digits.slice(5)}`;
         return phone;
     }
 
@@ -678,23 +916,16 @@
         if (!timestamp) return '--';
         const d = new Date(timestamp);
         const now = new Date();
-        const diffTime = now - d;
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
+        const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
         if (diffDays === 0) return 'Today';
         if (diffDays === 1) return 'Yesterday';
         if (diffDays < 7) return `${diffDays}d ago`;
-
         return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
     }
 
     function formatDateFull(timestamp) {
         if (!timestamp) return '--';
-        return new Date(timestamp).toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-        });
+        return new Date(timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
     }
 
     function escapeHtml(str) {
@@ -712,7 +943,6 @@
         searchClear.classList.toggle('hidden', val.length === 0);
         renderCustomerList(val);
     });
-
     searchClear.addEventListener('click', () => {
         searchInput.value = '';
         searchClear.classList.add('hidden');
@@ -727,8 +957,27 @@
         if (statsVisible) updateStats();
     });
 
-    // Settings
-    $('#btn-settings').addEventListener('click', openSettingsModal);
+    // Owner profile
+    $('#btn-owner-profile').addEventListener('click', goToOwnerProfile);
+    $('#btn-owner-back').addEventListener('click', goHome);
+
+    // Edit shop from owner profile
+    $('#btn-edit-shop').addEventListener('click', openSettingsModal);
+
+    // Export data
+    $('#btn-export-data').addEventListener('click', exportData);
+
+    // Logout
+    $('#btn-logout').addEventListener('click', () => openModal(modalLogout));
+    $('#btn-cancel-logout').addEventListener('click', () => closeModal(modalLogout));
+    $('#modal-logout-close').addEventListener('click', () => closeModal(modalLogout));
+    $('#btn-confirm-logout').addEventListener('click', () => {
+        clearAuth();
+        closeModal(modalLogout);
+        app.classList.add('hidden');
+        showAuth();
+        showToast('Logged out successfully');
+    });
 
     // FAB
     $('#fab-add').addEventListener('click', () => openCustomerModal());
@@ -737,18 +986,12 @@
     $('#btn-back').addEventListener('click', goHome);
 
     // Edit customer
-    $('#btn-edit-customer').addEventListener('click', () => {
-        openCustomerModal(currentCustomerId);
-    });
+    $('#btn-edit-customer').addEventListener('click', () => openCustomerModal(currentCustomerId));
 
     // Delete customer
-    $('#btn-delete-customer').addEventListener('click', () => {
-        openModal(modalDelete);
-    });
-
+    $('#btn-delete-customer').addEventListener('click', () => openModal(modalDelete));
     $('#btn-cancel-delete').addEventListener('click', () => closeModal(modalDelete));
     $('#modal-delete-close').addEventListener('click', () => closeModal(modalDelete));
-
     $('#btn-confirm-delete').addEventListener('click', () => {
         if (currentCustomerId) {
             deleteCustomer(currentCustomerId);
@@ -768,10 +1011,8 @@
     $('#modal-settings-close').addEventListener('click', () => closeModal(modalSettings));
 
     // Close modals on overlay click
-    [modalCustomer, modalTransaction, modalDelete, modalReceipt, modalSettings].forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal(modal);
-        });
+    [modalCustomer, modalTransaction, modalDelete, modalReceipt, modalSettings, modalLogout].forEach(modal => {
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
     });
 
     // Partial amount toggle
@@ -779,10 +1020,7 @@
 
     // Receipt actions
     $('#btn-share-whatsapp').addEventListener('click', shareCurrentReceiptOnWhatsApp);
-
-    $('#btn-print-receipt').addEventListener('click', () => {
-        window.print();
-    });
+    $('#btn-print-receipt').addEventListener('click', () => window.print());
 
     // Customer form submit
     formCustomer.addEventListener('submit', (e) => {
@@ -793,25 +1031,19 @@
         const address = $('#input-address').value;
         const notes = $('#input-customer-notes').value;
 
-        if (!name || !phone) {
-            showToast('Name and phone are required');
-            return;
-        }
+        if (!name || !phone) { showToast('Name and phone are required'); return; }
 
         if (editingCustomerId) {
             updateCustomer(editingCustomerId, name, phone, email, address, notes);
             closeModal(modalCustomer);
             showToast('Customer updated ✓');
-            if (currentCustomerId === editingCustomerId) {
-                renderProfile();
-            }
+            if (currentCustomerId === editingCustomerId) renderProfile();
         } else {
-            const customer = addCustomer(name, phone, email, address, notes);
+            addCustomer(name, phone, email, address, notes);
             closeModal(modalCustomer);
             showToast('Customer added ✓');
             renderCustomerList();
         }
-
         editingCustomerId = null;
     });
 
@@ -825,10 +1057,7 @@
         const paidAmount = $('#input-paid-amount').value;
         const notes = $('#input-txn-notes').value;
 
-        if (!item || !amount || !date) {
-            showToast('Please fill all required fields');
-            return;
-        }
+        if (!item || !amount || !date) { showToast('Please fill all required fields'); return; }
 
         addTransaction(currentCustomerId, item, amount, date, status, paidAmount, notes);
         closeModal(modalTransaction);
@@ -844,39 +1073,37 @@
             shopPhone: $('#input-shop-phone').value.trim(),
             shopAddress: $('#input-shop-address').value.trim(),
             gst: $('#input-shop-gst').value.trim(),
-            tagline: $('#input-shop-tagline').value.trim()
+            tagline: $('#input-shop-tagline').value.trim(),
+            category: getSettings().category || 'general'
         };
 
-        if (!settings.shopName) {
-            showToast('Shop name is required');
-            return;
-        }
+        if (!settings.shopName) { showToast('Shop name is required'); return; }
 
         saveSettings(settings);
         closeModal(modalSettings);
+        updateHeaderFromAuth();
+
+        // If on owner profile, refresh it
+        if (viewOwner.classList.contains('active')) renderOwnerProfile();
+
         showToast('Shop settings saved ✓');
     });
 
     // Keyboard: Escape to close modals
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            if (!modalCustomer.classList.contains('hidden')) closeModal(modalCustomer);
-            if (!modalTransaction.classList.contains('hidden')) closeModal(modalTransaction);
-            if (!modalDelete.classList.contains('hidden')) closeModal(modalDelete);
-            if (!modalReceipt.classList.contains('hidden')) closeModal(modalReceipt);
-            if (!modalSettings.classList.contains('hidden')) closeModal(modalSettings);
+            [modalCustomer, modalTransaction, modalDelete, modalReceipt, modalSettings, modalLogout].forEach(m => {
+                if (!m.classList.contains('hidden')) closeModal(m);
+            });
         }
     });
 
-    // Handle back navigation with browser back button
+    // Handle back navigation
     window.addEventListener('popstate', () => {
-        if (viewProfile.classList.contains('active')) {
-            goHome();
-        }
+        if (viewProfile.classList.contains('active') || viewOwner.classList.contains('active')) goHome();
     });
 
-    // ===== INIT =====
+    // ===== START =====
     initApp();
 
 })();
-

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="description" content="ShopBase - Smart Customer Management for Shopkeepers. Track customers, purchases, and payment history.">
-    <meta name="theme-color" content="#0a0e1a">
+    <meta name="theme-color" content="#0c111d">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>ShopBase — Customer Manager</title>
@@ -20,28 +20,178 @@
     <div id="splash-screen" class="splash">
         <div class="splash-content">
             <div class="splash-icon">
-                <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                    <rect x="4" y="12" width="56" height="44" rx="8" stroke="url(#g1)" stroke-width="3"/>
-                    <path d="M4 24h56" stroke="url(#g1)" stroke-width="3"/>
-                    <circle cx="20" cy="38" r="4" fill="url(#g1)"/>
-                    <circle cx="32" cy="38" r="4" fill="url(#g2)"/>
-                    <circle cx="44" cy="38" r="4" fill="url(#g2)"/>
+                <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
+                    <rect x="6" y="14" width="52" height="40" rx="8" stroke="url(#sg1)" stroke-width="2.5"/>
+                    <path d="M6 26h52" stroke="url(#sg1)" stroke-width="2.5"/>
+                    <circle cx="22" cy="38" r="3.5" fill="url(#sg1)"/>
+                    <circle cx="32" cy="38" r="3.5" fill="url(#sg2)"/>
+                    <circle cx="42" cy="38" r="3.5" fill="url(#sg2)"/>
                     <defs>
-                        <linearGradient id="g1" x1="0" y1="0" x2="64" y2="64">
-                            <stop stop-color="#6C63FF"/>
-                            <stop offset="1" stop-color="#3B82F6"/>
+                        <linearGradient id="sg1" x1="0" y1="0" x2="64" y2="64">
+                            <stop stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/>
                         </linearGradient>
-                        <linearGradient id="g2" x1="0" y1="0" x2="64" y2="64">
-                            <stop stop-color="#8B5CF6"/>
-                            <stop offset="1" stop-color="#06B6D4"/>
+                        <linearGradient id="sg2" x1="0" y1="0" x2="64" y2="64">
+                            <stop stop-color="#8b5cf6"/><stop offset="1" stop-color="#06b6d4"/>
                         </linearGradient>
                     </defs>
                 </svg>
             </div>
             <h1 class="splash-title">ShopBase</h1>
             <p class="splash-subtitle">Customer Manager</p>
-            <div class="splash-loader">
-                <div class="splash-loader-bar"></div>
+            <div class="splash-loader"><div class="splash-loader-bar"></div></div>
+        </div>
+    </div>
+
+    <!-- ========== AUTH CONTAINER ========== -->
+    <div id="auth-container" class="auth-container hidden">
+
+        <!-- STEP: Welcome -->
+        <div id="auth-welcome" class="auth-step active">
+            <div class="auth-card">
+                <div class="auth-brand">
+                    <div class="auth-logo">
+                        <svg width="44" height="44" viewBox="0 0 64 64" fill="none">
+                            <rect x="6" y="14" width="52" height="40" rx="8" stroke="url(#ag1)" stroke-width="2.5"/>
+                            <path d="M6 26h52" stroke="url(#ag1)" stroke-width="2.5"/>
+                            <circle cx="22" cy="38" r="3.5" fill="url(#ag1)"/>
+                            <circle cx="32" cy="38" r="3.5" fill="url(#ag2)"/>
+                            <circle cx="42" cy="38" r="3.5" fill="url(#ag2)"/>
+                            <defs>
+                                <linearGradient id="ag1" x1="0" y1="0" x2="64" y2="64">
+                                    <stop stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/>
+                                </linearGradient>
+                                <linearGradient id="ag2" x1="0" y1="0" x2="64" y2="64">
+                                    <stop stop-color="#8b5cf6"/><stop offset="1" stop-color="#06b6d4"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <h1 class="auth-title">ShopBase</h1>
+                    <p class="auth-desc">Smart customer management for your shop</p>
+                </div>
+
+                <div class="auth-buttons">
+                    <button id="btn-auth-google" class="btn-google" type="button">
+                        <svg width="20" height="20" viewBox="0 0 24 24">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                        </svg>
+                        Continue with Google
+                    </button>
+
+                    <div class="auth-divider">
+                        <span>or</span>
+                    </div>
+
+                    <button id="btn-auth-phone" class="btn-phone-auth" type="button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="14" height="20" x="5" y="2" rx="2" ry="2"/>
+                            <path d="M12 18h.01"/>
+                        </svg>
+                        Continue with Phone
+                    </button>
+                </div>
+
+                <p class="auth-terms">By continuing, you agree to our <a href="#">Terms</a> &amp; <a href="#">Privacy Policy</a></p>
+            </div>
+        </div>
+
+        <!-- STEP: Phone Auth -->
+        <div id="auth-phone" class="auth-step">
+            <div class="auth-card">
+                <button id="btn-phone-back" class="auth-back" aria-label="Go back" type="button">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <h2 class="auth-step-title">Enter your phone</h2>
+                <p class="auth-step-desc">We'll use this to identify your account</p>
+
+                <form id="form-phone" class="auth-form">
+                    <div class="phone-input-group">
+                        <span class="phone-prefix">+91</span>
+                        <input type="tel" id="auth-phone-input" class="phone-input" placeholder="98765 43210" maxlength="12" autocomplete="tel" required>
+                    </div>
+                    <button type="submit" class="btn-primary" id="btn-phone-continue">Continue</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- STEP: PIN -->
+        <div id="auth-pin" class="auth-step">
+            <div class="auth-card">
+                <button id="btn-pin-back" class="auth-back" aria-label="Go back" type="button">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <h2 class="auth-step-title" id="pin-title">Create a PIN</h2>
+                <p class="auth-step-desc" id="pin-desc">Set a 4-digit PIN to secure your account</p>
+
+                <form id="form-pin" class="auth-form">
+                    <div class="pin-input-group" id="pin-boxes">
+                        <input type="tel" class="pin-box" maxlength="1" data-index="0" autocomplete="off" inputmode="numeric" required>
+                        <input type="tel" class="pin-box" maxlength="1" data-index="1" autocomplete="off" inputmode="numeric" required>
+                        <input type="tel" class="pin-box" maxlength="1" data-index="2" autocomplete="off" inputmode="numeric" required>
+                        <input type="tel" class="pin-box" maxlength="1" data-index="3" autocomplete="off" inputmode="numeric" required>
+                    </div>
+                    <p id="pin-error" class="auth-error hidden">Incorrect PIN. Please try again.</p>
+                    <button type="submit" class="btn-primary" id="btn-pin-submit">Verify</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- STEP: Google Email -->
+        <div id="auth-google-step" class="auth-step">
+            <div class="auth-card">
+                <button id="btn-google-back" class="auth-back" aria-label="Go back" type="button">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <h2 class="auth-step-title">Sign in with Google</h2>
+                <p class="auth-step-desc">Enter your Gmail address</p>
+
+                <form id="form-google" class="auth-form">
+                    <div class="form-group">
+                        <input type="email" id="auth-google-email" placeholder="yourname@gmail.com" autocomplete="email" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Continue</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- STEP: Profile Setup -->
+        <div id="auth-setup" class="auth-step">
+            <div class="auth-card">
+                <h2 class="auth-step-title">Set up your shop</h2>
+                <p class="auth-step-desc">Tell us about yourself and your business</p>
+
+                <form id="form-setup" class="auth-form">
+                    <div class="form-group">
+                        <label for="setup-name">Your Name *</label>
+                        <input type="text" id="setup-name" placeholder="e.g. Rahul Sharma" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-shop">Shop Name *</label>
+                        <input type="text" id="setup-shop" placeholder="e.g. Sharma Electronics" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-category">Shop Category</label>
+                        <select id="setup-category">
+                            <option value="general">General Store</option>
+                            <option value="electronics">Electronics</option>
+                            <option value="clothing">Clothing & Fashion</option>
+                            <option value="grocery">Grocery</option>
+                            <option value="pharmacy">Pharmacy</option>
+                            <option value="hardware">Hardware</option>
+                            <option value="mobile">Mobile & Accessories</option>
+                            <option value="jewellery">Jewellery</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-address">Shop Address</label>
+                        <textarea id="setup-address" rows="2" placeholder="e.g. Shop #12, MG Road, Pune"></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary">Get Started</button>
+                </form>
             </div>
         </div>
     </div>
@@ -53,30 +203,24 @@
         <div id="view-home" class="view active">
             <header class="app-header">
                 <div class="header-top">
-                    <div>
+                    <div class="header-left">
                         <h1 class="app-title">ShopBase</h1>
-                        <p class="app-tagline">Your Customers, Your Data</p>
+                        <p class="app-tagline" id="header-shop-name">Your Customers, Your Data</p>
                     </div>
                     <div class="header-actions">
-                        <button id="btn-settings" class="icon-btn" aria-label="Shop Settings" title="Shop Settings">
+                        <button id="btn-stats" class="icon-btn" aria-label="Statistics" title="Quick Stats">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-                                <circle cx="12" cy="12" r="3"/>
+                                <rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/>
                             </svg>
                         </button>
-                        <button id="btn-stats" class="icon-btn" aria-label="Statistics" title="Quick Stats">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="12" width="4" height="9" rx="1"/>
-                                <rect x="10" y="7" width="4" height="14" rx="1"/>
-                                <rect x="17" y="3" width="4" height="18" rx="1"/>
-                            </svg>
+                        <button id="btn-owner-profile" class="owner-avatar-btn" aria-label="Profile" title="My Profile">
+                            <span id="owner-avatar-initial">S</span>
                         </button>
                     </div>
                 </div>
                 <div class="search-container">
                     <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="m21 21-4.3-4.3"/>
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
                     </svg>
                     <input type="text" id="search-input" class="search-input" placeholder="Search by name or phone..." autocomplete="off">
                     <button id="search-clear" class="search-clear hidden" aria-label="Clear search">✕</button>
@@ -109,30 +253,20 @@
                     <h2 id="list-title">All Customers</h2>
                     <span class="list-count" id="list-count">0</span>
                 </div>
-
-                <div id="customer-list" class="customer-list">
-                    <!-- Populated by JS -->
-                </div>
-
+                <div id="customer-list" class="customer-list"></div>
                 <div id="empty-state" class="empty-state hidden">
                     <div class="empty-icon">
-                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                            <circle cx="9" cy="7" r="4"/>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.25">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                         </svg>
                     </div>
                     <h3>No Customers Yet</h3>
                     <p>Tap the + button to add your first customer</p>
                 </div>
-
                 <div id="no-results" class="empty-state hidden">
                     <div class="empty-icon">
-                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
-                            <circle cx="11" cy="11" r="8"/>
-                            <path d="m21 21-4.3-4.3"/>
-                            <path d="M8 11h6"/>
+                        <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.25">
+                            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6"/>
                         </svg>
                     </div>
                     <h3>No Results Found</h3>
@@ -140,33 +274,24 @@
                 </div>
             </div>
 
-            <!-- FAB -->
             <button id="fab-add" class="fab" aria-label="Add Customer" title="Add Customer">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 5v14M5 12h14"/>
-                </svg>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
             </button>
         </div>
 
         <!-- ===== CUSTOMER PROFILE VIEW ===== -->
         <div id="view-profile" class="view">
-            <header class="profile-header">
+            <header class="view-header">
                 <button id="btn-back" class="icon-btn back-btn" aria-label="Go back">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m15 18-6-6 6-6"/>
-                    </svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                 </button>
                 <h2>Customer Profile</h2>
-                <div class="profile-actions">
+                <div class="header-actions">
                     <button id="btn-edit-customer" class="icon-btn" aria-label="Edit customer" title="Edit">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                        </svg>
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                     </button>
                     <button id="btn-delete-customer" class="icon-btn danger-btn" aria-label="Delete customer" title="Delete">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                        </svg>
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                     </button>
                 </div>
             </header>
@@ -174,12 +299,10 @@
             <div class="profile-card" id="profile-card">
                 <div class="profile-avatar" id="profile-avatar">A</div>
                 <h2 class="profile-name" id="profile-name">Customer Name</h2>
-                <a class="profile-phone" id="profile-phone" href="tel:">📞 +91 00000 00000</a>
-                <p class="profile-address" id="profile-address"></p>
-                <p class="profile-notes" id="profile-notes"></p>
-                <div class="profile-meta">
-                    <span id="profile-date">Customer since: --</span>
-                </div>
+                <a class="profile-phone" id="profile-phone" href="tel:">+91 00000 00000</a>
+                <p class="profile-address hidden" id="profile-address"></p>
+                <p class="profile-notes hidden" id="profile-notes"></p>
+                <p class="profile-meta" id="profile-date">Customer since: --</p>
             </div>
 
             <div class="profile-summary">
@@ -202,13 +325,68 @@
                     <h3>Purchase History</h3>
                     <button id="btn-add-transaction" class="btn-small">+ Add</button>
                 </div>
-
-                <div id="transaction-list" class="transaction-list">
-                    <!-- Populated by JS -->
-                </div>
-
+                <div id="transaction-list" class="transaction-list"></div>
                 <div id="empty-transactions" class="empty-state-small hidden">
                     <p>No transactions yet. Tap "+ Add" to record a purchase.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== OWNER PROFILE VIEW ===== -->
+        <div id="view-owner" class="view">
+            <header class="view-header">
+                <button id="btn-owner-back" class="icon-btn back-btn" aria-label="Go back">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <h2>My Profile</h2>
+                <div class="header-actions"></div>
+            </header>
+
+            <div class="owner-profile-content">
+                <div class="owner-card">
+                    <div class="owner-avatar" id="owner-profile-avatar">RS</div>
+                    <h2 class="owner-name" id="owner-profile-name">Shop Owner</h2>
+                    <p class="owner-detail" id="owner-profile-contact"></p>
+                    <span class="owner-badge" id="owner-profile-method">Phone</span>
+                </div>
+
+                <div class="owner-shop-card">
+                    <h3 class="owner-section-title">Shop Details</h3>
+                    <div class="owner-detail-row">
+                        <span class="owner-label">Shop Name</span>
+                        <span class="owner-value" id="owner-shop-name">--</span>
+                    </div>
+                    <div class="owner-detail-row">
+                        <span class="owner-label">Category</span>
+                        <span class="owner-value" id="owner-shop-category">--</span>
+                    </div>
+                    <div class="owner-detail-row">
+                        <span class="owner-label">Phone</span>
+                        <span class="owner-value" id="owner-shop-phone">--</span>
+                    </div>
+                    <div class="owner-detail-row">
+                        <span class="owner-label">Address</span>
+                        <span class="owner-value" id="owner-shop-address">--</span>
+                    </div>
+                    <div class="owner-detail-row">
+                        <span class="owner-label">GST</span>
+                        <span class="owner-value" id="owner-shop-gst">--</span>
+                    </div>
+                </div>
+
+                <div class="owner-actions">
+                    <button id="btn-edit-shop" class="btn-outline">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                        Edit Shop Details
+                    </button>
+                    <button id="btn-export-data" class="btn-outline">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export Data
+                    </button>
+                    <button id="btn-logout" class="btn-outline btn-outline-danger">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        Logout
+                    </button>
                 </div>
             </div>
         </div>
@@ -258,7 +436,7 @@
             <form id="form-transaction" class="modal-form">
                 <div class="form-group">
                     <label for="input-item">Item / Service *</label>
-                    <input type="text" id="input-item" placeholder="e.g. iPhone 15, Screen Guard, Repair" required>
+                    <input type="text" id="input-item" placeholder="e.g. iPhone 15, Screen Guard" required>
                 </div>
                 <div class="form-group">
                     <label for="input-amount">Amount (₹) *</label>
@@ -276,13 +454,13 @@
                         <option value="partial">🔄 Partial</option>
                     </select>
                 </div>
-                <div class="form-group" id="partial-amount-group" class="hidden">
+                <div class="form-group hidden" id="partial-amount-group">
                     <label for="input-paid-amount">Amount Paid (₹)</label>
                     <input type="number" id="input-paid-amount" placeholder="e.g. 5000" min="0">
                 </div>
                 <div class="form-group">
                     <label for="input-txn-notes">Notes (Optional)</label>
-                    <textarea id="input-txn-notes" rows="2" placeholder="e.g. Warranty till Dec 2025, IMEI: xxxxx"></textarea>
+                    <textarea id="input-txn-notes" rows="2" placeholder="e.g. Warranty till Dec 2025"></textarea>
                 </div>
                 <button type="submit" class="btn-primary">Save Transaction</button>
             </form>
@@ -331,14 +509,8 @@
                 </div>
                 <div class="receipt-divider">- - - - - - - - - - - - - - - - - - - -</div>
                 <table class="receipt-table">
-                    <thead>
-                        <tr>
-                            <th align="left">Item</th>
-                            <th align="right">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody id="receipt-items">
-                    </tbody>
+                    <thead><tr><th align="left">Item</th><th align="right">Amount</th></tr></thead>
+                    <tbody id="receipt-items"></tbody>
                 </table>
                 <div class="receipt-divider">- - - - - - - - - - - - - - - - - - - -</div>
                 <div class="receipt-total">
@@ -354,14 +526,10 @@
             </div>
             <div class="receipt-actions">
                 <button id="btn-share-whatsapp" class="btn-whatsapp">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                    </svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
                     Share on WhatsApp
                 </button>
-                <button id="btn-print-receipt" class="btn-secondary">
-                    🖨️ Print
-                </button>
+                <button id="btn-print-receipt" class="btn-secondary">🖨️ Print</button>
             </div>
         </div>
     </div>
@@ -370,7 +538,7 @@
     <div id="modal-settings" class="modal-overlay hidden">
         <div class="modal">
             <div class="modal-header">
-                <h2>⚙️ Shop Settings</h2>
+                <h2>Shop Settings</h2>
                 <button class="modal-close" id="modal-settings-close" aria-label="Close">✕</button>
             </div>
             <form id="form-settings" class="modal-form">
@@ -396,6 +564,21 @@
                 </div>
                 <button type="submit" class="btn-primary">Save Settings</button>
             </form>
+        </div>
+    </div>
+
+    <!-- ========== LOGOUT MODAL ========== -->
+    <div id="modal-logout" class="modal-overlay hidden">
+        <div class="modal modal-small">
+            <div class="modal-header">
+                <h2>Logout?</h2>
+                <button class="modal-close" id="modal-logout-close" aria-label="Close">✕</button>
+            </div>
+            <p class="modal-message">Your data is saved locally and will be available when you log back in.</p>
+            <div class="modal-actions">
+                <button id="btn-cancel-logout" class="btn-secondary">Cancel</button>
+                <button id="btn-confirm-logout" class="btn-danger">Logout</button>
+            </div>
         </div>
     </div>
 
