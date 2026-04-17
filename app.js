@@ -14,6 +14,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const firebaseAuth = firebase.auth();
+const db = firebase.firestore();
 
 (function () {
     'use strict';
@@ -34,6 +35,75 @@ const firebaseAuth = firebase.auth();
 
     function saveData(data) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        syncToCloud(); // Auto-sync to Firestore
+    }
+
+    // ===== FIRESTORE CLOUD SYNC =====
+    function getFirestoreUserId() {
+        const fbUser = firebaseAuth.currentUser;
+        if (fbUser) return fbUser.uid;
+        const auth = getAuth();
+        if (auth && auth.user && auth.user.id) return auth.user.id;
+        return null;
+    }
+
+    async function syncToCloud() {
+        const userId = getFirestoreUserId();
+        if (!userId) return;
+
+        try {
+            const data = getData();
+            const settings = getSettings();
+            const auth = getAuth();
+
+            await db.collection('users').doc(userId).set({
+                user: auth ? auth.user : null,
+                settings: settings,
+                customers: data.customers || [],
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        } catch (err) {
+            console.error('Cloud sync error:', err);
+        }
+    }
+
+    async function loadFromCloud() {
+        const userId = getFirestoreUserId();
+        if (!userId) return false;
+
+        try {
+            const doc = await db.collection('users').doc(userId).get();
+            if (doc.exists) {
+                const cloudData = doc.data();
+
+                // Load customers from cloud
+                if (cloudData.customers && cloudData.customers.length > 0) {
+                    const localData = getData();
+                    // Use cloud data if local is empty or cloud has more
+                    if (!localData.customers || localData.customers.length === 0 || cloudData.customers.length > localData.customers.length) {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify({ customers: cloudData.customers, version: 1 }));
+                    }
+                }
+
+                // Load settings from cloud
+                if (cloudData.settings && cloudData.settings.shopName) {
+                    localStorage.setItem(SETTINGS_KEY, JSON.stringify(cloudData.settings));
+                }
+
+                return true;
+            }
+        } catch (err) {
+            console.error('Cloud load error:', err);
+        }
+        return false;
+    }
+
+    async function migrateLocalToCloud() {
+        const data = getData();
+        if (data.customers && data.customers.length > 0) {
+            await syncToCloud();
+            console.log('Local data migrated to cloud');
+        }
     }
 
     function getSettings() {
@@ -46,6 +116,7 @@ const firebaseAuth = firebase.auth();
 
     function saveSettings(settings) {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        syncToCloud(); // Auto-sync settings to cloud
     }
 
     function getAuth() {
@@ -206,9 +277,15 @@ const firebaseAuth = firebase.auth();
         showAuthStep('auth-welcome');
     }
 
-    function showMainApp() {
+    async function showMainApp() {
         authContainer.classList.add('hidden');
         app.classList.remove('hidden');
+
+        // Load data from cloud (if available)
+        await loadFromCloud();
+        // Migrate any existing local data to cloud
+        migrateLocalToCloud();
+
         updateHeaderFromAuth();
         renderCustomerList();
         updateNavBadge();
