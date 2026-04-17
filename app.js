@@ -170,9 +170,19 @@ const firebaseAuth = firebase.auth();
 
     function setupRecaptcha() {
         try {
-            // Clear existing container
-            const container = document.getElementById('recaptcha-container');
-            if (container) container.innerHTML = '';
+            // Clear existing verifier first
+            if (recaptchaVerifier) {
+                try { recaptchaVerifier.clear(); } catch(e) { /* ignore */ }
+                recaptchaVerifier = null;
+            }
+
+            // Recreate the container element to avoid "already rendered" error
+            const oldContainer = document.getElementById('recaptcha-container');
+            if (oldContainer) {
+                const newContainer = document.createElement('div');
+                newContainer.id = 'recaptcha-container';
+                oldContainer.parentNode.replaceChild(newContainer, oldContainer);
+            }
 
             recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
                 size: 'invisible',
