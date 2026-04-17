@@ -81,6 +81,9 @@
     const viewHome = $('#view-home');
     const viewProfile = $('#view-profile');
     const viewOwner = $('#view-owner');
+    const viewPayments = $('#view-payments');
+    const bottomNav = $('#bottom-nav');
+    const fabBtn = $('#fab-add');
 
     const searchInput = $('#search-input');
     const searchClear = $('#search-clear');
@@ -146,6 +149,7 @@
         app.classList.remove('hidden');
         updateHeaderFromAuth();
         renderCustomerList();
+        updateNavBadge();
     }
 
     function updateHeaderFromAuth() {
@@ -424,23 +428,64 @@
     function showView(viewId) {
         $$('.view').forEach(v => v.classList.remove('active'));
         $(viewId).classList.add('active');
+
+        // Show FAB only on home tab
+        if (viewId === '#view-home') {
+            fabBtn.style.display = '';
+        } else {
+            fabBtn.style.display = 'none';
+        }
+    }
+
+    function setActiveTab(tabName) {
+        $$('.nav-tab').forEach(t => t.classList.remove('active'));
+        const tab = $(`.nav-tab[data-tab="${tabName}"]`);
+        if (tab) tab.classList.add('active');
     }
 
     function goHome() {
         currentCustomerId = null;
         showView('#view-home');
+        setActiveTab('home');
         renderCustomerList();
     }
 
     function goToProfile(customerId) {
         currentCustomerId = customerId;
         showView('#view-profile');
+        // Don't change tab — keep current tab highlighted
         renderProfile();
     }
 
     function goToOwnerProfile() {
         showView('#view-owner');
+        setActiveTab('profile');
         renderOwnerProfile();
+    }
+
+    function goToPayments() {
+        showView('#view-payments');
+        setActiveTab('payments');
+        renderPaymentsView();
+    }
+
+    function updateNavBadge() {
+        const data = getData();
+        const customers = data.customers || [];
+        let pendingCount = 0;
+        customers.forEach(c => {
+            const txns = c.transactions || [];
+            const hasPending = txns.some(t => t.status === 'pending' || t.status === 'partial');
+            if (hasPending) pendingCount++;
+        });
+
+        const badge = $('#nav-pending-badge');
+        if (pendingCount > 0) {
+            badge.textContent = pendingCount;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
     }
 
     // ===== RENDER CUSTOMER LIST =====
@@ -507,9 +552,16 @@
                     <div class="customer-last-visit">${lastVisit}</div>
                     ${totalPending > 0 ? `<div class="customer-pending-badge">₹${formatAmount(totalPending)} due</div>` : ''}
                 </div>
+                ${totalPending > 0 ? `<button class="customer-remind-btn" data-customer-id="${customer.id}" aria-label="Send payment reminder" title="Send WhatsApp Reminder">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                </button>` : ''}
             `;
 
-            item.addEventListener('click', () => goToProfile(customer.id));
+            item.addEventListener('click', (e) => {
+                // Don't navigate if clicking the remind button
+                if (e.target.closest('.customer-remind-btn')) return;
+                goToProfile(customer.id);
+            });
             item.addEventListener('keydown', (e) => { if (e.key === 'Enter') goToProfile(customer.id); });
             customerListEl.appendChild(item);
         });
@@ -556,6 +608,15 @@
         summaryPending.textContent = `₹${formatAmount(totalPending)}`;
         summaryVisits.textContent = txns.length;
 
+        // Show/hide payment reminder button
+        const reminderSection = $('#reminder-section');
+        if (totalPending > 0) {
+            reminderSection.classList.remove('hidden');
+            $('#reminder-amount').textContent = `₹${formatAmount(totalPending)} pending`;
+        } else {
+            reminderSection.classList.add('hidden');
+        }
+
         renderTransactions(txns, customer);
     }
 
@@ -586,6 +647,90 @@
         $('#owner-shop-phone').textContent = settings.shopPhone ? formatPhone(settings.shopPhone) : '--';
         $('#owner-shop-address').textContent = settings.shopAddress || '--';
         $('#owner-shop-gst').textContent = settings.gst || '--';
+    }
+
+    // ===== RENDER PAYMENTS VIEW =====
+    function renderPaymentsView() {
+        const data = getData();
+        const customers = data.customers || [];
+        const pendingListEl = $('#pending-customer-list');
+        const emptyPending = $('#empty-pending');
+
+        // Calculate pending data per customer
+        const pendingCustomers = [];
+        customers.forEach(c => {
+            const txns = c.transactions || [];
+            const totalPending = txns.reduce((sum, t) => {
+                if (t.status === 'pending') return sum + (t.amount || 0);
+                if (t.status === 'partial') return sum + ((t.amount || 0) - (t.paidAmount || 0));
+                return sum;
+            }, 0);
+            const pendingTxnCount = txns.filter(t => t.status === 'pending' || t.status === 'partial').length;
+            if (totalPending > 0) {
+                pendingCustomers.push({ ...c, totalPending, pendingTxnCount });
+            }
+        });
+
+        // Sort by highest pending first
+        pendingCustomers.sort((a, b) => b.totalPending - a.totalPending);
+
+        const grandTotal = pendingCustomers.reduce((sum, c) => sum + c.totalPending, 0);
+
+        // Update summary cards
+        $('#payments-total-pending').textContent = `₹${formatAmount(grandTotal)}`;
+        $('#payments-customers-count').textContent = pendingCustomers.length;
+
+        // Render list
+        pendingListEl.innerHTML = '';
+
+        if (pendingCustomers.length === 0) {
+            emptyPending.classList.remove('hidden');
+            return;
+        }
+
+        emptyPending.classList.add('hidden');
+
+        const whatsappSvg = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>`;
+
+        pendingCustomers.forEach((customer, index) => {
+            const item = document.createElement('div');
+            item.className = 'pending-item';
+            item.style.animationDelay = `${index * 0.05}s`;
+            item.innerHTML = `
+                <div class="pending-avatar">${getInitials(customer.name)}</div>
+                <div class="pending-info">
+                    <div class="pending-name">${escapeHtml(customer.name)}</div>
+                    <div class="pending-detail">${formatPhone(customer.phone)} · ${customer.pendingTxnCount} pending txn${customer.pendingTxnCount !== 1 ? 's' : ''}</div>
+                </div>
+                <div class="pending-right">
+                    <span class="pending-amount">₹${formatAmount(customer.totalPending)}</span>
+                    <button class="pending-remind-btn" data-customer-id="${customer.id}" title="Send WhatsApp Reminder">
+                        ${whatsappSvg}
+                    </button>
+                </div>
+            `;
+
+            // Click on card to go to customer profile
+            item.addEventListener('click', (e) => {
+                if (e.target.closest('.pending-remind-btn')) return;
+                goToProfile(customer.id);
+            });
+
+            pendingListEl.appendChild(item);
+        });
+
+        // Attach remind handlers
+        pendingListEl.querySelectorAll('.pending-remind-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const cId = btn.dataset.customerId;
+                const c = customers.find(x => x.id === cId);
+                if (c) sendPaymentReminder(c);
+            });
+        });
+
+        // Update nav badge
+        updateNavBadge();
     }
 
     // ===== RENDER TRANSACTIONS =====
@@ -733,6 +878,70 @@
         showToast('Opening WhatsApp... 📱');
     }
 
+    // ===== PAYMENT REMINDERS =====
+    function generateReminderText(customer) {
+        const settings = getSettings();
+        const txns = customer.transactions || [];
+        const pendingTxns = txns.filter(t => t.status === 'pending' || t.status === 'partial');
+
+        if (pendingTxns.length === 0) return null;
+
+        const totalPending = pendingTxns.reduce((sum, t) => {
+            if (t.status === 'pending') return sum + (t.amount || 0);
+            if (t.status === 'partial') return sum + ((t.amount || 0) - (t.paidAmount || 0));
+            return sum;
+        }, 0);
+
+        const divider = '━━━━━━━━━━━━━━━━━━━━━━';
+        let text = `🔔 *Payment Reminder*\n${divider}\n`;
+        text += `Dear *${customer.name}*,\n\n`;
+        text += `This is a friendly reminder from *${settings.shopName || 'our shop'}* regarding your pending payment.\n\n`;
+        text += `📋 *Pending Items:*\n`;
+
+        pendingTxns.forEach(t => {
+            const date = formatDateFull(new Date(t.date).getTime());
+            if (t.status === 'pending') {
+                text += `  • ${t.item} — ₹${formatAmount(t.amount)} (${date})\n`;
+            } else if (t.status === 'partial') {
+                const remaining = (t.amount || 0) - (t.paidAmount || 0);
+                text += `  • ${t.item} — ₹${formatAmount(remaining)} remaining (${date})\n`;
+            }
+        });
+
+        text += `\n${divider}\n`;
+        text += `💰 *Total Pending: ₹${formatAmount(totalPending)}*\n`;
+        text += `${divider}\n\n`;
+        text += `Please clear the dues at your earliest convenience.\n\n`;
+        text += `Thank you! 🙏\n\n`;
+        text += `— *${settings.shopName || 'My Shop'}*\n`;
+        if (settings.shopAddress) text += `📍 ${settings.shopAddress}\n`;
+        if (settings.shopPhone) text += `📞 ${formatPhone(settings.shopPhone)}\n`;
+        text += `\n_Sent via ShopBase_`;
+
+        return text;
+    }
+
+    function sendPaymentReminder(customer) {
+        const text = generateReminderText(customer);
+        if (!text) {
+            showToast('No pending dues for this customer');
+            return;
+        }
+
+        let phone = customer.phone.replace(/\D/g, '');
+        if (phone.length === 10) phone = '91' + phone;
+
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+        showToast('Opening WhatsApp reminder... 📱');
+    }
+
+    function sendReminderForCurrentCustomer() {
+        const data = getData();
+        const customer = data.customers.find(c => c.id === currentCustomerId);
+        if (!customer) return;
+        sendPaymentReminder(customer);
+    }
+
     // ===== STATS =====
     function updateStats() {
         const data = getData();
@@ -750,6 +959,7 @@
         $('#stat-transactions').textContent = allTxns.length;
         $('#stat-revenue').textContent = `₹${formatAmount(totalRevenue)}`;
         $('#stat-pending').textContent = `₹${formatAmount(totalPending)}`;
+        updateNavBadge();
     }
 
     // ===== CUSTOMER CRUD =====
@@ -957,9 +1167,15 @@
         if (statsVisible) updateStats();
     });
 
-    // Owner profile
-    $('#btn-owner-profile').addEventListener('click', goToOwnerProfile);
-    $('#btn-owner-back').addEventListener('click', goHome);
+    // Bottom Navigation
+    $$('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabName = tab.dataset.tab;
+            if (tabName === 'home') goHome();
+            else if (tabName === 'payments') goToPayments();
+            else if (tabName === 'profile') goToOwnerProfile();
+        });
+    });
 
     // Edit shop from owner profile
     $('#btn-edit-shop').addEventListener('click', openSettingsModal);
@@ -977,6 +1193,21 @@
         app.classList.add('hidden');
         showAuth();
         showToast('Logged out successfully');
+    });
+
+    // Payment reminder (profile page)
+    $('#btn-send-reminder').addEventListener('click', sendReminderForCurrentCustomer);
+
+    // Quick remind buttons (customer list) — delegated
+    customerListEl.addEventListener('click', (e) => {
+        const remindBtn = e.target.closest('.customer-remind-btn');
+        if (remindBtn) {
+            e.stopPropagation();
+            const customerId = remindBtn.dataset.customerId;
+            const data = getData();
+            const customer = data.customers.find(c => c.id === customerId);
+            if (customer) sendPaymentReminder(customer);
+        }
     });
 
     // FAB
