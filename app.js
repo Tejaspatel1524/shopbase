@@ -3,6 +3,18 @@
    Auth, Profile, Receipt & Customer Management
    ============================================ */
 
+// ===== FIREBASE CONFIG =====
+const firebaseConfig = {
+    apiKey: "AIzaSyChlvj-2nC2iAVe1sVoEdV3NchMalOFjss",
+    authDomain: "shopbase-eea44.firebaseapp.com",
+    projectId: "shopbase-eea44",
+    storageBucket: "shopbase-eea44.firebasestorage.app",
+    messagingSenderId: "419044947513",
+    appId: "1:419044947513:web:a45b6ef6263e8261ecffe8"
+};
+firebase.initializeApp(firebaseConfig);
+const firebaseAuth = firebase.auth();
+
 (function () {
     'use strict';
 
@@ -67,8 +79,10 @@
     let editingCustomerId = null;
     let statsVisible = false;
     let currentReceiptData = null;
-    let authMode = 'login'; // 'login' or 'signup'
     let pendingAuthData = {};
+    let confirmationResult = null;
+    let recaptchaVerifier = null;
+    let resendTimer = null;
 
     // ===== DOM REFS =====
     const $ = (sel) => document.querySelector(sel);
@@ -126,16 +140,43 @@
 
     // ===== INIT =====
     function initApp() {
+        // Setup invisible reCAPTCHA
+        setupRecaptcha();
+
         setTimeout(() => {
             splash.classList.add('hidden');
 
-            const auth = getAuth();
-            if (auth && auth.isLoggedIn) {
-                showMainApp();
-            } else {
-                showAuth();
-            }
+            // Listen for Firebase auth state
+            firebaseAuth.onAuthStateChanged((firebaseUser) => {
+                if (firebaseUser) {
+                    // User is signed in with Firebase
+                    const auth = getAuth();
+                    if (auth && auth.isLoggedIn && auth.user) {
+                        showMainApp();
+                    } else {
+                        // Firebase user exists but no local profile — need setup
+                        pendingAuthData.firebaseUser = firebaseUser;
+                        pendingAuthData.phone = firebaseUser.phoneNumber || '';
+                        pendingAuthData.email = firebaseUser.email || '';
+                        pendingAuthData.method = firebaseUser.phoneNumber ? 'phone' : 'google';
+                        goToSetup();
+                    }
+                } else {
+                    showAuth();
+                }
+            });
         }, 2200);
+    }
+
+    function setupRecaptcha() {
+        try {
+            recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+                size: 'invisible',
+                callback: () => { /* reCAPTCHA solved */ }
+            });
+        } catch (e) {
+            console.error('reCAPTCHA setup error:', e);
+        }
     }
 
     function showAuth() {
@@ -156,7 +197,6 @@
         const auth = getAuth();
         const settings = getSettings();
 
-        // Update header shop name
         const headerShopName = $('#header-shop-name');
         if (settings.shopName) {
             headerShopName.textContent = settings.shopName;
@@ -164,7 +204,6 @@
             headerShopName.textContent = 'Your Customers, Your Data';
         }
 
-        // Update owner avatar
         const avatarBtn = $('#owner-avatar-initial');
         if (auth && auth.user && auth.user.name) {
             avatarBtn.textContent = getInitials(auth.user.name);
@@ -182,10 +221,10 @@
 
     // Look up user by phone number
     function findUserByPhone(phone) {
-        const cleanPhone = phone.replace(/\D/g, '');
+        const cleanPhone = phone.replace(/\D/g, '').slice(-10);
         try {
             const users = JSON.parse(localStorage.getItem('shopbase_users') || '[]');
-            return users.find(u => u.phone.replace(/\D/g, '') === cleanPhone);
+            return users.find(u => u.phone.replace(/\D/g, '').slice(-10) === cleanPhone);
         } catch { return null; }
     }
 
@@ -215,7 +254,7 @@
     function completeLogin(user) {
         saveAuth({ isLoggedIn: true, user });
         showMainApp();
-        showToast(`Welcome back, ${user.name.split(' ')[0]}! 👋`);
+        showToast(`Welcome back, ${user.name.split(' ')[0]}! \uD83D\uDC4B`);
     }
 
     // Complete signup (go to profile setup)
@@ -224,23 +263,21 @@
     }
 
     function completeSetup(name, shopName, category, address) {
-        const userId = generateId();
+        const fbUser = firebaseAuth.currentUser;
+        const userId = fbUser ? fbUser.uid : generateId();
         const user = {
             id: userId,
             name,
-            phone: pendingAuthData.phone || '',
-            email: pendingAuthData.email || '',
+            phone: pendingAuthData.phone || (fbUser && fbUser.phoneNumber) || '',
+            email: pendingAuthData.email || (fbUser && fbUser.email) || '',
             authMethod: pendingAuthData.method || 'phone',
+            firebaseUid: fbUser ? fbUser.uid : null,
             createdAt: Date.now()
         };
 
-        // Save user
         saveUser(user);
-
-        // Save auth
         saveAuth({ isLoggedIn: true, user });
 
-        // Save settings
         const settings = getSettings();
         settings.shopName = shopName;
         settings.shopPhone = user.phone;
@@ -249,7 +286,55 @@
         saveSettings(settings);
 
         showMainApp();
-        showToast(`Welcome to ShopBase, ${name.split(' ')[0]}! 🎉`);
+        showToast(`Welcome to ShopBase, ${name.split(' ')[0]}! \uD83C\uDF89`);
+    }
+
+    // ===== OTP HELPERS =====
+    function setPhoneLoading(loading) {
+        const btn = $('#btn-phone-continue');
+        const text = $('#phone-btn-text');
+        const loader = $('#phone-btn-loader');
+        btn.disabled = loading;
+        text.classList.toggle('hidden', loading);
+        loader.classList.toggle('hidden', !loading);
+    }
+
+    function setOtpLoading(loading) {
+        const btn = $('#btn-otp-verify');
+        const text = $('#otp-btn-text');
+        const loader = $('#otp-btn-loader');
+        btn.disabled = loading;
+        text.classList.toggle('hidden', loading);
+        loader.classList.toggle('hidden', !loading);
+    }
+
+    function clearOtpBoxes() {
+        $$('.otp-box').forEach(b => { b.value = ''; b.classList.remove('filled'); });
+    }
+
+    function getOtpValue() {
+        return Array.from($$('.otp-box')).map(b => b.value).join('');
+    }
+
+    function startResendTimer() {
+        let seconds = 30;
+        const timerEl = $('#resend-timer');
+        const btn = $('#btn-resend-otp');
+        btn.disabled = true;
+        timerEl.textContent = seconds;
+        btn.innerHTML = `Resend in <span id="resend-timer">${seconds}</span>s`;
+
+        clearInterval(resendTimer);
+        resendTimer = setInterval(() => {
+            seconds--;
+            const el = $('#resend-timer');
+            if (el) el.textContent = seconds;
+            if (seconds <= 0) {
+                clearInterval(resendTimer);
+                btn.disabled = false;
+                btn.textContent = 'Resend OTP';
+            }
+        }, 1000);
     }
 
     // ===== AUTH EVENT LISTENERS =====
@@ -261,55 +346,182 @@
         setTimeout(() => $('#auth-phone-input').focus(), 200);
     });
 
-    // Welcome → Google
-    $('#btn-auth-google').addEventListener('click', () => {
+    // Welcome → Google (Real Firebase Google Popup)
+    $('#btn-auth-google').addEventListener('click', async () => {
         pendingAuthData = { method: 'google' };
-        showAuthStep('auth-google-step');
-        setTimeout(() => $('#auth-google-email').focus(), 200);
+        try {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            const result = await firebaseAuth.signInWithPopup(provider);
+            const fbUser = result.user;
+
+            pendingAuthData.email = fbUser.email || '';
+            pendingAuthData.firebaseUser = fbUser;
+
+            // Check if local profile exists
+            const existingUser = findUserByEmail(fbUser.email);
+            if (existingUser) {
+                completeLogin(existingUser);
+            } else {
+                // Pre-fill setup with Google data
+                const setupName = $('#setup-name');
+                if (fbUser.displayName) setupName.value = fbUser.displayName;
+                goToSetup();
+            }
+        } catch (err) {
+            if (err.code !== 'auth/popup-closed-by-user') {
+                showToast('Google sign-in failed. Try again.');
+                console.error('Google auth error:', err);
+            }
+        }
     });
 
     // Back buttons
-    $('#btn-phone-back').addEventListener('click', () => showAuthStep('auth-welcome'));
-    $('#btn-google-back').addEventListener('click', () => showAuthStep('auth-welcome'));
+    $('#btn-phone-back').addEventListener('click', () => {
+        showAuthStep('auth-welcome');
+    });
+    $('#btn-otp-back').addEventListener('click', () => {
+        showAuthStep('auth-phone');
+        clearOtpBoxes();
+        clearInterval(resendTimer);
+    });
 
-    // Phone form submit — direct login or signup (no PIN)
-    $('#form-phone').addEventListener('submit', (e) => {
+    // Phone form submit — Send OTP via Firebase
+    $('#form-phone').addEventListener('submit', async (e) => {
         e.preventDefault();
         const phone = $('#auth-phone-input').value.replace(/\s/g, '');
         if (phone.length < 10) {
-            showToast('Please enter a valid phone number');
+            showToast('Please enter a valid 10-digit phone number');
             return;
         }
 
+        const fullPhone = '+91' + phone.slice(-10);
         pendingAuthData.phone = phone;
-        const existingUser = findUserByPhone(phone);
 
-        if (existingUser) {
-            // Existing user — login directly
-            completeLogin(existingUser);
-        } else {
-            // New user — go to profile setup
-            goToSetup();
+        setPhoneLoading(true);
+
+        try {
+            // Reset reCAPTCHA if needed
+            if (!recaptchaVerifier) setupRecaptcha();
+
+            confirmationResult = await firebaseAuth.signInWithPhoneNumber(fullPhone, recaptchaVerifier);
+
+            // Show OTP screen
+            $('#otp-desc').textContent = `Enter the 6-digit code sent to +91 ${phone.slice(-10).replace(/(\d{5})(\d{5})/, '$1 $2')}`;
+            clearOtpBoxes();
+            $('#otp-error').classList.add('hidden');
+            showAuthStep('auth-otp');
+            setTimeout(() => $$('.otp-box')[0].focus(), 200);
+            startResendTimer();
+            showToast('OTP sent! Check your phone \uD83D\uDCF1');
+        } catch (err) {
+            console.error('OTP send error:', err);
+            if (err.code === 'auth/too-many-requests') {
+                showToast('Too many attempts. Try again later.');
+            } else if (err.code === 'auth/invalid-phone-number') {
+                showToast('Invalid phone number format.');
+            } else {
+                showToast('Failed to send OTP. Try again.');
+            }
+            // Reset reCAPTCHA for retry
+            recaptchaVerifier = null;
+            setupRecaptcha();
+        } finally {
+            setPhoneLoading(false);
         }
     });
 
-    // Google form submit
-    $('#form-google').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const email = $('#auth-google-email').value.trim();
+    // OTP box behavior (6 digits)
+    $$('.otp-box').forEach((box, index) => {
+        box.addEventListener('input', (e) => {
+            const val = e.target.value.replace(/\D/g, '');
+            e.target.value = val;
+            if (val && index < 5) $$('.otp-box')[index + 1].focus();
+            e.target.classList.toggle('filled', val.length > 0);
+        });
+        box.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                const prev = $$('.otp-box')[index - 1];
+                prev.focus(); prev.value = ''; prev.classList.remove('filled');
+            }
+        });
+        box.addEventListener('focus', (e) => e.target.select());
+        // Handle paste
+        box.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pasteData = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+            pasteData.split('').forEach((digit, i) => {
+                const targetBox = $$('.otp-box')[i];
+                if (targetBox) { targetBox.value = digit; targetBox.classList.add('filled'); }
+            });
+            const lastIndex = Math.min(pasteData.length, 6) - 1;
+            if (lastIndex >= 0) $$('.otp-box')[lastIndex].focus();
+        });
+    });
 
-        if (!email) {
-            showToast('Please enter your email');
+    // OTP form submit — Verify code via Firebase
+    $('#form-otp').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const otp = getOtpValue();
+
+        if (otp.length !== 6) {
+            showToast('Please enter the full 6-digit code');
             return;
         }
 
-        pendingAuthData.email = email;
-        const existingUser = findUserByEmail(email);
+        if (!confirmationResult) {
+            showToast('Session expired. Please resend OTP.');
+            return;
+        }
 
-        if (existingUser) {
-            completeLogin(existingUser);
-        } else {
-            goToSetup();
+        setOtpLoading(true);
+        $('#otp-error').classList.add('hidden');
+
+        try {
+            const result = await confirmationResult.confirm(otp);
+            const fbUser = result.user;
+
+            // Check if local user profile exists
+            const existingUser = findUserByPhone(fbUser.phoneNumber || pendingAuthData.phone);
+            if (existingUser) {
+                completeLogin(existingUser);
+            } else {
+                pendingAuthData.firebaseUser = fbUser;
+                goToSetup();
+            }
+        } catch (err) {
+            console.error('OTP verify error:', err);
+            $('#otp-error').classList.remove('hidden');
+            clearOtpBoxes();
+            setTimeout(() => $$('.otp-box')[0].focus(), 100);
+            if (err.code === 'auth/invalid-verification-code') {
+                showToast('Wrong code. Try again.');
+            } else if (err.code === 'auth/code-expired') {
+                showToast('Code expired. Please resend.');
+            } else {
+                showToast('Verification failed. Try again.');
+            }
+        } finally {
+            setOtpLoading(false);
+        }
+    });
+
+    // Resend OTP
+    $('#btn-resend-otp').addEventListener('click', async () => {
+        const phone = pendingAuthData.phone;
+        if (!phone) return;
+
+        const fullPhone = '+91' + phone.slice(-10);
+        try {
+            recaptchaVerifier = null;
+            setupRecaptcha();
+            confirmationResult = await firebaseAuth.signInWithPhoneNumber(fullPhone, recaptchaVerifier);
+            showToast('New OTP sent! \uD83D\uDCE8');
+            startResendTimer();
+            clearOtpBoxes();
+            setTimeout(() => $$('.otp-box')[0].focus(), 200);
+        } catch (err) {
+            console.error('Resend error:', err);
+            showToast('Failed to resend. Try again later.');
         }
     });
 
@@ -1250,6 +1462,22 @@
     // Handle back navigation
     window.addEventListener('popstate', () => {
         if (viewProfile.classList.contains('active') || viewOwner.classList.contains('active')) goHome();
+    });
+
+    // Logout handlers
+    $('#btn-logout').addEventListener('click', () => openModal(modalLogout));
+    $('#btn-cancel-logout').addEventListener('click', () => closeModal(modalLogout));
+    $('#modal-logout-close').addEventListener('click', () => closeModal(modalLogout));
+    $('#btn-confirm-logout').addEventListener('click', async () => {
+        closeModal(modalLogout);
+        clearAuth();
+        try {
+            await firebaseAuth.signOut();
+        } catch (e) {
+            console.error('Firebase signOut error:', e);
+        }
+        showAuth();
+        showToast('Logged out successfully');
     });
 
     // ===== START =====
