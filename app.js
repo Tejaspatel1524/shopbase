@@ -437,11 +437,15 @@ const firebaseAuth = firebase.auth();
             if (err.message === 'timeout') {
                 showToast('Request timed out. Please try again.');
             } else if (err.code === 'auth/too-many-requests') {
-                showToast('Too many attempts. Try again later.');
+                showToast('Too many attempts. Wait a few minutes.');
             } else if (err.code === 'auth/invalid-phone-number') {
                 showToast('Invalid phone number format.');
+            } else if (err.code === 'auth/quota-exceeded') {
+                showToast('Daily SMS limit reached (10/day). Try Google login.');
+            } else if (err.code === 'auth/captcha-check-failed') {
+                showToast('Security check failed. Refresh and try again.');
             } else {
-                showToast('Failed to send OTP. Try again.');
+                showToast(`Error: ${err.code || err.message || 'Unknown'}`);
             }
             // Reset reCAPTCHA for retry
             recaptchaVerifier = null;
