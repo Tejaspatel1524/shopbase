@@ -231,7 +231,6 @@
             phone: pendingAuthData.phone || '',
             email: pendingAuthData.email || '',
             authMethod: pendingAuthData.method || 'phone',
-            pin: pendingAuthData.pin || '',
             createdAt: Date.now()
         };
 
@@ -271,16 +270,9 @@
 
     // Back buttons
     $('#btn-phone-back').addEventListener('click', () => showAuthStep('auth-welcome'));
-    $('#btn-pin-back').addEventListener('click', () => {
-        if (pendingAuthData.method === 'phone') {
-            showAuthStep('auth-phone');
-        } else {
-            showAuthStep('auth-welcome');
-        }
-    });
     $('#btn-google-back').addEventListener('click', () => showAuthStep('auth-welcome'));
 
-    // Phone form submit
+    // Phone form submit — direct login or signup (no PIN)
     $('#form-phone').addEventListener('submit', (e) => {
         e.preventDefault();
         const phone = $('#auth-phone-input').value.replace(/\s/g, '');
@@ -293,84 +285,10 @@
         const existingUser = findUserByPhone(phone);
 
         if (existingUser) {
-            // Login flow
-            authMode = 'login';
-            pendingAuthData.existingUser = existingUser;
-            $('#pin-title').textContent = 'Enter your PIN';
-            $('#pin-desc').textContent = 'Enter your 4-digit PIN to login';
-            $('#btn-pin-submit').textContent = 'Login';
+            // Existing user — login directly
+            completeLogin(existingUser);
         } else {
-            // Signup flow
-            authMode = 'signup';
-            $('#pin-title').textContent = 'Create a PIN';
-            $('#pin-desc').textContent = 'Set a 4-digit PIN to secure your account';
-            $('#btn-pin-submit').textContent = 'Continue';
-        }
-
-        $('#pin-error').classList.add('hidden');
-        clearPinBoxes();
-        showAuthStep('auth-pin');
-        setTimeout(() => $$('.pin-box')[0].focus(), 200);
-    });
-
-    // PIN boxes behavior
-    $$('.pin-box').forEach((box, index) => {
-        box.addEventListener('input', (e) => {
-            const val = e.target.value.replace(/\D/g, '');
-            e.target.value = val;
-
-            if (val && index < 3) {
-                $$('.pin-box')[index + 1].focus();
-            }
-
-            // Update filled state
-            e.target.classList.toggle('filled', val.length > 0);
-        });
-
-        box.addEventListener('keydown', (e) => {
-            if (e.key === 'Backspace' && !e.target.value && index > 0) {
-                const prev = $$('.pin-box')[index - 1];
-                prev.focus();
-                prev.value = '';
-                prev.classList.remove('filled');
-            }
-        });
-
-        box.addEventListener('focus', (e) => {
-            e.target.select();
-        });
-    });
-
-    function getPinValue() {
-        return Array.from($$('.pin-box')).map(b => b.value).join('');
-    }
-
-    function clearPinBoxes() {
-        $$('.pin-box').forEach(b => { b.value = ''; b.classList.remove('filled'); });
-    }
-
-    // PIN form submit
-    $('#form-pin').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const pin = getPinValue();
-
-        if (pin.length !== 4) {
-            showToast('Please enter a 4-digit PIN');
-            return;
-        }
-
-        if (authMode === 'login') {
-            // Verify PIN
-            if (pendingAuthData.existingUser && pendingAuthData.existingUser.pin === pin) {
-                completeLogin(pendingAuthData.existingUser);
-            } else {
-                $('#pin-error').classList.remove('hidden');
-                clearPinBoxes();
-                setTimeout(() => $$('.pin-box')[0].focus(), 100);
-            }
-        } else {
-            // Signup: store PIN and go to setup
-            pendingAuthData.pin = pin;
+            // New user — go to profile setup
             goToSetup();
         }
     });
