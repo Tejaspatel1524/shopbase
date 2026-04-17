@@ -52,6 +52,7 @@ const db = firebase.firestore();
         if (!userId) return;
 
         try {
+            isSyncing = true; // Prevent onSnapshot from re-triggering
             const data = getData();
             const settings = getSettings();
             const auth = getAuth();
@@ -64,6 +65,8 @@ const db = firebase.firestore();
             }, { merge: true });
         } catch (err) {
             console.error('Cloud sync error:', err);
+        } finally {
+            setTimeout(() => { isSyncing = false; }, 1000); // Reset after 1s
         }
     }
 
@@ -103,6 +106,51 @@ const db = firebase.firestore();
         if (data.customers && data.customers.length > 0) {
             await syncToCloud();
             console.log('Local data migrated to cloud');
+        }
+    }
+
+    // ===== REAL-TIME SYNC =====
+    let realtimeUnsubscribe = null;
+    let isSyncing = false; // Prevent infinite loops
+
+    function startRealtimeSync() {
+        const userId = getFirestoreUserId();
+        if (!userId) return;
+
+        // Stop any existing listener
+        stopRealtimeSync();
+
+        realtimeUnsubscribe = db.collection('users').doc(userId)
+            .onSnapshot((doc) => {
+                if (isSyncing) return; // Skip if we triggered the change
+                if (!doc.exists) return;
+
+                const cloudData = doc.data();
+
+                // Update local customers from cloud
+                if (cloudData.customers) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({ customers: cloudData.customers, version: 1 }));
+                }
+
+                // Update local settings from cloud
+                if (cloudData.settings && cloudData.settings.shopName) {
+                    localStorage.setItem(SETTINGS_KEY, JSON.stringify(cloudData.settings));
+                }
+
+                // Re-render UI with new data
+                renderCustomerList();
+                updateNavBadge();
+                updateHeaderFromAuth();
+                console.log('Real-time sync: UI updated from cloud');
+            }, (err) => {
+                console.error('Real-time sync error:', err);
+            });
+    }
+
+    function stopRealtimeSync() {
+        if (realtimeUnsubscribe) {
+            realtimeUnsubscribe();
+            realtimeUnsubscribe = null;
         }
     }
 
@@ -289,6 +337,9 @@ const db = firebase.firestore();
         updateHeaderFromAuth();
         renderCustomerList();
         updateNavBadge();
+
+        // Start real-time sync — live updates across devices!
+        startRealtimeSync();
     }
 
     function updateHeaderFromAuth() {
@@ -1430,6 +1481,8 @@ const db = firebase.firestore();
     $('#btn-cancel-logout').addEventListener('click', () => closeModal(modalLogout));
     $('#modal-logout-close').addEventListener('click', () => closeModal(modalLogout));
     $('#btn-confirm-logout').addEventListener('click', () => {
+        stopRealtimeSync(); // Stop listening to cloud changes
+        firebaseAuth.signOut(); // Sign out from Firebase
         clearAuth();
         closeModal(modalLogout);
         app.classList.add('hidden');
