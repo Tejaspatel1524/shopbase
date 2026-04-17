@@ -170,9 +170,20 @@ const firebaseAuth = firebase.auth();
 
     function setupRecaptcha() {
         try {
+            // Clear existing container
+            const container = document.getElementById('recaptcha-container');
+            if (container) container.innerHTML = '';
+
             recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
                 size: 'invisible',
-                callback: () => { /* reCAPTCHA solved */ }
+                callback: () => { /* reCAPTCHA solved */ },
+                'expired-callback': () => {
+                    console.log('reCAPTCHA expired, resetting...');
+                    recaptchaVerifier = null;
+                }
+            });
+            recaptchaVerifier.render().catch(err => {
+                console.error('reCAPTCHA render error:', err);
             });
         } catch (e) {
             console.error('reCAPTCHA setup error:', e);
@@ -403,7 +414,15 @@ const firebaseAuth = firebase.auth();
             // Reset reCAPTCHA if needed
             if (!recaptchaVerifier) setupRecaptcha();
 
-            confirmationResult = await firebaseAuth.signInWithPhoneNumber(fullPhone, recaptchaVerifier);
+            // Add timeout to prevent infinite loading
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('timeout')), 25000)
+            );
+
+            confirmationResult = await Promise.race([
+                firebaseAuth.signInWithPhoneNumber(fullPhone, recaptchaVerifier),
+                timeoutPromise
+            ]);
 
             // Show OTP screen
             $('#otp-desc').textContent = `Enter the 6-digit code sent to +91 ${phone.slice(-10).replace(/(\d{5})(\d{5})/, '$1 $2')}`;
@@ -415,7 +434,9 @@ const firebaseAuth = firebase.auth();
             showToast('OTP sent! Check your phone \uD83D\uDCF1');
         } catch (err) {
             console.error('OTP send error:', err);
-            if (err.code === 'auth/too-many-requests') {
+            if (err.message === 'timeout') {
+                showToast('Request timed out. Please try again.');
+            } else if (err.code === 'auth/too-many-requests') {
                 showToast('Too many attempts. Try again later.');
             } else if (err.code === 'auth/invalid-phone-number') {
                 showToast('Invalid phone number format.');
