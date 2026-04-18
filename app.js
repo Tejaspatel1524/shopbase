@@ -79,18 +79,24 @@ const db = firebase.firestore();
             if (doc.exists) {
                 const cloudData = doc.data();
 
-                // Load customers from cloud
+                // Always load customers from cloud (cloud is the source of truth)
                 if (cloudData.customers && cloudData.customers.length > 0) {
-                    const localData = getData();
-                    // Use cloud data if local is empty or cloud has more
-                    if (!localData.customers || localData.customers.length === 0 || cloudData.customers.length > localData.customers.length) {
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify({ customers: cloudData.customers, version: 1 }));
-                    }
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({ customers: cloudData.customers, version: 1 }));
+                    console.log('Loaded', cloudData.customers.length, 'customers from cloud');
                 }
 
-                // Load settings from cloud
-                if (cloudData.settings && cloudData.settings.shopName) {
+                // Always load settings from cloud
+                if (cloudData.settings) {
                     localStorage.setItem(SETTINGS_KEY, JSON.stringify(cloudData.settings));
+                }
+
+                // Load auth/user info from cloud
+                if (cloudData.user) {
+                    const currentAuth = getAuth();
+                    if (currentAuth) {
+                        currentAuth.user = { ...currentAuth.user, ...cloudData.user };
+                        localStorage.setItem(AUTH_KEY, JSON.stringify(currentAuth));
+                    }
                 }
 
                 return true;
