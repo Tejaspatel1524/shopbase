@@ -1,4 +1,4 @@
-﻿/* ============================================
+/* ============================================
    ShopBase â€” Application Logic (v3)
    Auth, Profile, Receipt & Customer Management
    ============================================ */
@@ -1265,6 +1265,9 @@ const db = firebase.firestore();
     function formatAmount(num) {
         if (num === undefined || num === null) return '0';
         return num.toLocaleString('en-IN');
+    }
+    function formatCurrency(num) {
+        return 'Rs.' + formatAmount(num);
     }
 
     function formatDateShort(timestamp) {
