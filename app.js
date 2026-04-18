@@ -941,143 +941,226 @@ const db = firebase.firestore();
     function showReceipt(txnId, customer) {
         const txn = (customer.transactions || []).find(t => t.id === txnId);
         if (!txn) return;
-
         const settings = getSettings();
         const receiptNum = generateReceiptNumber();
         currentReceiptData = { txn, customer, settings, receiptNum };
-
         $('#receipt-shop-name').textContent = settings.shopName || 'My Shop';
         $('#receipt-shop-address').textContent = settings.shopAddress || '';
-        $('#receipt-shop-phone').textContent = settings.shopPhone ? `ðŸ“ž ${formatPhone(settings.shopPhone)}` : '';
-        if (settings.gst) {
-            $('#receipt-shop-phone').textContent += ` | GST: ${settings.gst}`;
-        }
-
+        $('#receipt-shop-phone').textContent = settings.shopPhone ? 'Ph: ' + formatPhone(settings.shopPhone) : '';
+        if (settings.gst) { $('#receipt-shop-phone').textContent += ' | GST: ' + settings.gst; }
         $('#receipt-number').textContent = receiptNum;
-        $('#receipt-date').textContent = `Date: ${formatDateFull(new Date(txn.date).getTime())}`;
+        $('#receipt-date').textContent = 'Date: ' + formatDateFull(new Date(txn.date).getTime());
         $('#receipt-customer-name').textContent = customer.name;
-        $('#receipt-customer-phone').textContent = `ðŸ“ž ${formatPhone(customer.phone)}`;
-
-        $('#receipt-items').innerHTML = `<tr><td>${escapeHtml(txn.item)}</td><td>₹${formatAmount(txn.amount)}</td></tr>`;
-        $('#receipt-total').textContent = `₹${formatAmount(txn.amount)}`;
-
+        $('#receipt-customer-phone').textContent = 'Ph: ' + formatPhone(customer.phone);
+        $('#receipt-items').innerHTML = '<tr><td>' + escapeHtml(txn.item) + '</td><td>Rs.' + formatAmount(txn.amount) + '</td></tr>';
+        $('#receipt-total').textContent = 'Rs.' + formatAmount(txn.amount);
         const statusLine = $('#receipt-status-line');
         statusLine.className = 'receipt-status-line ' + txn.status;
-        if (txn.status === 'paid') statusLine.textContent = 'âœ… PAID IN FULL';
-        else if (txn.status === 'pending') statusLine.textContent = `â³ PAYMENT PENDING â€” ₹${formatAmount(txn.amount)}`;
+        if (txn.status === 'paid') statusLine.textContent = 'PAID IN FULL';
+        else if (txn.status === 'pending') statusLine.textContent = 'PAYMENT PENDING - Rs.' + formatAmount(txn.amount);
         else if (txn.status === 'partial') {
             const paid = txn.paidAmount || 0;
-            statusLine.textContent = `ðŸ”„ PARTIAL â€” Paid ₹${formatAmount(paid)}, Due ₹${formatAmount(txn.amount - paid)}`;
+            statusLine.textContent = 'PARTIAL - Paid Rs.' + formatAmount(paid) + ', Due Rs.' + formatAmount(txn.amount - paid);
         }
-
         openModal(modalReceipt);
     }
 
-    function generateReceiptText(data) {
+    // ===== PDF GENERATION =====
+    function generateInvoicePDF(data) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
         const { txn, customer, settings, receiptNum } = data;
-        const divider = 'â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”';
-
-        let text = `ðŸ§¾ *${settings.shopName || 'My Shop'}*\n`;
-        if (settings.shopAddress) text += `ðŸ“ ${settings.shopAddress}\n`;
-        if (settings.shopPhone) text += `ðŸ“ž ${formatPhone(settings.shopPhone)}\n`;
-        text += `${divider}\n*Receipt #${receiptNum}*\n`;
-        text += `ðŸ“… Date: ${formatDateFull(new Date(txn.date).getTime())}\n${divider}\n`;
-        text += `*Bill To:*\nðŸ‘¤ ${customer.name}\nðŸ“ž ${formatPhone(customer.phone)}\n${divider}\n`;
-        text += `*Item:* ${txn.item}\n*Amount:* ₹${formatAmount(txn.amount)}\n${divider}\n`;
-        text += `*TOTAL: ₹${formatAmount(txn.amount)}*\n`;
-
-        if (txn.status === 'paid') text += `âœ… *PAID IN FULL*\n`;
-        else if (txn.status === 'pending') text += `â³ *PAYMENT PENDING*\nðŸ’° Due: ₹${formatAmount(txn.amount)}\n`;
-        else if (txn.status === 'partial') {
-            const paid = txn.paidAmount || 0;
-            text += `ðŸ”„ *PARTIAL PAYMENT*\nðŸ’° Paid: ₹${formatAmount(paid)} | Due: ₹${formatAmount(txn.amount - paid)}\n`;
-        }
-
-        if (txn.notes) text += `\nðŸ“ _${txn.notes}_\n`;
-        text += `${divider}\nThank you for your purchase! ðŸ™\n_Powered by ShopBase_`;
-        return text;
+        const pw = doc.internal.pageSize.getWidth();
+        doc.setFillColor(91, 45, 142);
+        doc.rect(0, 0, pw, 35, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text(settings.shopName || 'My Shop', 15, 18);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        if (settings.shopAddress) doc.text(settings.shopAddress, 15, 26);
+        if (settings.shopPhone) doc.text('Phone: ' + formatPhone(settings.shopPhone), 15, 31);
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('INVOICE', pw - 15, 50, { align: 'right' });
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(120, 120, 120);
+        doc.text('Invoice #: ' + receiptNum, pw - 15, 57, { align: 'right' });
+        doc.text('Date: ' + formatDateFull(new Date(txn.date).getTime()), pw - 15, 63, { align: 'right' });
+        doc.setTextColor(91, 45, 142);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('BILL TO:', 15, 55);
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(12);
+        doc.text(customer.name, 15, 62);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(120, 120, 120);
+        if (customer.phone) doc.text('Phone: ' + formatPhone(customer.phone), 15, 68);
+        var y = 80;
+        doc.setFillColor(245, 240, 255);
+        doc.rect(15, y, pw - 30, 10, 'F');
+        doc.setTextColor(91, 45, 142);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Item', 20, y + 7);
+        doc.text('Amount', pw - 20, y + 7, { align: 'right' });
+        y += 14;
+        doc.setTextColor(30, 30, 30);
+        doc.setFont('helvetica', 'normal');
+        doc.text(txn.item || 'Item', 20, y);
+        doc.text('Rs.' + formatAmount(txn.amount), pw - 20, y, { align: 'right' });
+        y += 8;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(15, y, pw - 15, y);
+        y += 10;
+        doc.setFillColor(91, 45, 142);
+        doc.rect(pw / 2, y - 5, pw / 2 - 15, 12, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TOTAL: Rs.' + formatAmount(txn.amount), pw - 20, y + 3, { align: 'right' });
+        y += 20;
+        doc.setFontSize(11);
+        if (txn.status === 'paid') { doc.setTextColor(34, 160, 34); doc.text('PAID IN FULL', 15, y); }
+        else if (txn.status === 'pending') { doc.setTextColor(220, 120, 0); doc.text('PAYMENT PENDING - Due: Rs.' + formatAmount(txn.amount), 15, y); }
+        else if (txn.status === 'partial') { var p = txn.paidAmount || 0; doc.setTextColor(220, 120, 0); doc.text('PARTIAL - Paid: Rs.' + formatAmount(p) + ' | Due: Rs.' + formatAmount(txn.amount - p), 15, y); }
+        if (txn.notes) { y += 12; doc.setTextColor(120, 120, 120); doc.setFontSize(9); doc.text('Notes: ' + txn.notes, 15, y); }
+        doc.setDrawColor(91, 45, 142);
+        doc.line(15, 270, pw - 15, 270);
+        doc.setTextColor(120, 120, 120);
+        doc.setFontSize(8);
+        doc.text('Thank you for your business!', pw / 2, 276, { align: 'center' });
+        doc.text('Generated by ShopBase', pw / 2, 281, { align: 'center' });
+        return doc;
     }
 
-    // ===== WHATSAPP =====
-    function shareOnWhatsApp(txnId, customer) {
-        const txn = (customer.transactions || []).find(t => t.id === txnId);
-        if (!txn) return;
-
-        const settings = getSettings();
-        const receiptNum = generateReceiptNumber();
-        const text = generateReceiptText({ txn, customer, settings, receiptNum });
-
-        let phone = customer.phone.replace(/\D/g, '');
-        if (phone.length === 10) phone = '91' + phone;
-
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
-        showToast('Opening WhatsApp... ðŸ“±');
-    }
-
-    function shareCurrentReceiptOnWhatsApp() {
-        if (!currentReceiptData) return;
-        const text = generateReceiptText(currentReceiptData);
-        let phone = currentReceiptData.customer.phone.replace(/\D/g, '');
-        if (phone.length === 10) phone = '91' + phone;
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
-        showToast('Opening WhatsApp... ðŸ“±');
-    }
-
-    // ===== PAYMENT REMINDERS =====
-    function generateReminderText(customer) {
+    function generateReminderPDF(customer) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
         const settings = getSettings();
         const txns = customer.transactions || [];
         const pendingTxns = txns.filter(t => t.status === 'pending' || t.status === 'partial');
-
+        const pw = doc.internal.pageSize.getWidth();
         if (pendingTxns.length === 0) return null;
-
         const totalPending = pendingTxns.reduce((sum, t) => {
             if (t.status === 'pending') return sum + (t.amount || 0);
             if (t.status === 'partial') return sum + ((t.amount || 0) - (t.paidAmount || 0));
             return sum;
         }, 0);
-
-        const divider = 'â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”';
-        let text = `ðŸ”” *Payment Reminder*\n${divider}\n`;
-        text += `Dear *${customer.name}*,\n\n`;
-        text += `This is a friendly reminder from *${settings.shopName || 'our shop'}* regarding your pending payment.\n\n`;
-        text += `ðŸ“‹ *Pending Items:*\n`;
-
-        pendingTxns.forEach(t => {
-            const date = formatDateFull(new Date(t.date).getTime());
-            if (t.status === 'pending') {
-                text += `  â€¢ ${t.item} â€” ₹${formatAmount(t.amount)} (${date})\n`;
-            } else if (t.status === 'partial') {
-                const remaining = (t.amount || 0) - (t.paidAmount || 0);
-                text += `  â€¢ ${t.item} â€” ₹${formatAmount(remaining)} remaining (${date})\n`;
-            }
+        doc.setFillColor(91, 45, 142);
+        doc.rect(0, 0, pw, 35, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text(settings.shopName || 'My Shop', 15, 18);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        if (settings.shopAddress) doc.text(settings.shopAddress, 15, 26);
+        if (settings.shopPhone) doc.text('Phone: ' + formatPhone(settings.shopPhone), 15, 31);
+        doc.setTextColor(220, 60, 60);
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text('PAYMENT REMINDER', pw / 2, 50, { align: 'center' });
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(12);
+        doc.text('Dear ' + customer.name + ',', 15, 65);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(120, 120, 120);
+        doc.text('This is a friendly reminder regarding your pending payment.', 15, 73);
+        var y = 85;
+        doc.setFillColor(245, 240, 255);
+        doc.rect(15, y, pw - 30, 10, 'F');
+        doc.setTextColor(91, 45, 142);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Item', 20, y + 7);
+        doc.text('Date', 100, y + 7);
+        doc.text('Due Amount', pw - 20, y + 7, { align: 'right' });
+        y += 14;
+        doc.setTextColor(30, 30, 30);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        pendingTxns.forEach(function(t) {
+            var due = t.status === 'pending' ? t.amount : (t.amount - (t.paidAmount || 0));
+            doc.text(t.item || 'Item', 20, y);
+            doc.text(formatDateShort(new Date(t.date).getTime()), 100, y);
+            doc.text('Rs.' + formatAmount(due), pw - 20, y, { align: 'right' });
+            y += 8;
         });
+        y += 2;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(15, y, pw - 15, y);
+        y += 10;
+        doc.setFillColor(220, 60, 60);
+        doc.rect(pw / 2, y - 5, pw / 2 - 15, 14, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TOTAL DUE: Rs.' + formatAmount(totalPending), pw - 20, y + 5, { align: 'right' });
+        y += 25;
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Please clear the dues at your earliest convenience.', 15, y);
+        doc.text('Thank you for your continued support!', 15, y + 8);
+        doc.setDrawColor(91, 45, 142);
+        doc.line(15, 270, pw - 15, 270);
+        doc.setTextColor(120, 120, 120);
+        doc.setFontSize(8);
+        doc.text(settings.shopName || 'My Shop', pw / 2, 276, { align: 'center' });
+        doc.text('Generated by ShopBase', pw / 2, 281, { align: 'center' });
+        return doc;
+    }
 
-        text += `\n${divider}\n`;
-        text += `ðŸ’° *Total Pending: ₹${formatAmount(totalPending)}*\n`;
-        text += `${divider}\n\n`;
-        text += `Please clear the dues at your earliest convenience.\n\n`;
-        text += `Thank you! ðŸ™\n\n`;
-        text += `â€” *${settings.shopName || 'My Shop'}*\n`;
-        if (settings.shopAddress) text += `ðŸ“ ${settings.shopAddress}\n`;
-        if (settings.shopPhone) text += `ðŸ“ž ${formatPhone(settings.shopPhone)}\n`;
-        text += `\n_Sent via ShopBase_`;
+    // ===== SHARE PDF =====
+    function sharePDFOnWhatsApp(doc, filename, phone) {
+        doc.save(filename);
+        var cleanPhone = phone.replace(/\D/g, '');
+        if (cleanPhone.length === 10) cleanPhone = '91' + cleanPhone;
+        var msg = 'Please find the attached ' + filename + '. Thank you!';
+        window.open('https://wa.me/' + cleanPhone + '?text=' + encodeURIComponent(msg), '_blank');
+        showToast('PDF saved! Share it on WhatsApp');
+    }
 
-        return text;
+    function shareOnWhatsApp(txnId, customer) {
+        var txn = (customer.transactions || []).find(t => t.id === txnId);
+        if (!txn) return;
+        var settings = getSettings();
+        var receiptNum = generateReceiptNumber();
+        var doc = generateInvoicePDF({ txn: txn, customer: customer, settings: settings, receiptNum: receiptNum });
+        var filename = 'Invoice_' + customer.name.replace(/\s+/g, '_') + '_' + receiptNum + '.pdf';
+        sharePDFOnWhatsApp(doc, filename, customer.phone);
+    }
+
+    function shareCurrentReceiptOnWhatsApp() {
+        if (!currentReceiptData) return;
+        var doc = generateInvoicePDF(currentReceiptData);
+        var filename = 'Invoice_' + currentReceiptData.customer.name.replace(/\s+/g, '_') + '_' + currentReceiptData.receiptNum + '.pdf';
+        sharePDFOnWhatsApp(doc, filename, currentReceiptData.customer.phone);
+    }
+
+    function downloadCurrentReceipt() {
+        if (!currentReceiptData) return;
+        var doc = generateInvoicePDF(currentReceiptData);
+        var filename = 'Invoice_' + currentReceiptData.customer.name.replace(/\s+/g, '_') + '_' + currentReceiptData.receiptNum + '.pdf';
+        doc.save(filename);
+        showToast('Invoice PDF downloaded!');
     }
 
     function sendPaymentReminder(customer) {
-        const text = generateReminderText(customer);
-        if (!text) {
+        var doc = generateReminderPDF(customer);
+        if (!doc) {
             showToast('No pending dues for this customer');
             return;
         }
-
-        let phone = customer.phone.replace(/\D/g, '');
-        if (phone.length === 10) phone = '91' + phone;
-
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
-        showToast('Opening WhatsApp reminder... ðŸ“±');
+        var filename = 'Payment_Reminder_' + customer.name.replace(/\s+/g, '_') + '.pdf';
+        sharePDFOnWhatsApp(doc, filename, customer.phone);
     }
 
     function sendReminderForCurrentCustomer() {
