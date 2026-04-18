@@ -181,7 +181,18 @@ a { color: inherit; text-decoration: none; }
 .auth-step-desc { font-size: 0.85rem; color: var(--text-tertiary); margin-bottom: 28px; }
 
 .auth-form { display: flex; flex-direction: column; gap: 18px; }
-.auth-error { font-size: 0.8rem; color: var(--danger); text-align: center; margin-top: -8px; }
+.auth-form .form-group { display: flex; flex-direction: column; gap: 6px; }
+.auth-form .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); }
+.auth-form .form-group input {
+    padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-md);
+    background: #f9fafb; color: var(--text-primary); font-size: 0.9rem;
+    transition: all var(--transition-fast); outline: none;
+}
+.auth-form .form-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); background: #fff; }
+.auth-error { font-size: 0.8rem; color: #ef4444; text-align: center; margin-top: -8px; padding: 8px; background: #fef2f2; border-radius: var(--radius-sm); }
+.auth-switch { text-align: center; font-size: 0.85rem; color: var(--text-tertiary); margin-top: 4px; }
+.link-btn { background: none; border: none; color: var(--accent); font-weight: 700; cursor: pointer; font-size: 0.85rem; padding: 0; text-decoration: underline; }
+.link-btn:hover { color: var(--accent-light); }
 
 /* Phone Input */
 .phone-input-group {

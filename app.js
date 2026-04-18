@@ -1,5 +1,5 @@
-/* ============================================
-   ShopBase — Application Logic (v3)
+﻿/* ============================================
+   ShopBase â€” Application Logic (v3)
    Auth, Profile, Receipt & Customer Management
    ============================================ */
 
@@ -265,25 +265,19 @@ const db = firebase.firestore();
 
     // ===== INIT =====
     function initApp() {
-        // Setup invisible reCAPTCHA
-        setupRecaptcha();
-
         setTimeout(() => {
             splash.classList.add('hidden');
 
             // Listen for Firebase auth state
             firebaseAuth.onAuthStateChanged((firebaseUser) => {
                 if (firebaseUser) {
-                    // User is signed in with Firebase
                     const auth = getAuth();
                     if (auth && auth.isLoggedIn && auth.user) {
                         showMainApp();
                     } else {
-                        // Firebase user exists but no local profile — need setup
                         pendingAuthData.firebaseUser = firebaseUser;
-                        pendingAuthData.phone = firebaseUser.phoneNumber || '';
                         pendingAuthData.email = firebaseUser.email || '';
-                        pendingAuthData.method = firebaseUser.phoneNumber ? 'phone' : 'google';
+                        pendingAuthData.method = firebaseUser.providerData[0]?.providerId === 'password' ? 'email' : 'google';
                         goToSetup();
                     }
                 } else {
@@ -293,42 +287,10 @@ const db = firebase.firestore();
         }, 2200);
     }
 
-    function setupRecaptcha() {
-        try {
-            // Clear existing verifier first
-            if (recaptchaVerifier) {
-                try { recaptchaVerifier.clear(); } catch(e) { /* ignore */ }
-                recaptchaVerifier = null;
-            }
-
-            // Recreate the container element to avoid "already rendered" error
-            const oldContainer = document.getElementById('recaptcha-container');
-            if (oldContainer) {
-                const newContainer = document.createElement('div');
-                newContainer.id = 'recaptcha-container';
-                oldContainer.parentNode.replaceChild(newContainer, oldContainer);
-            }
-
-            recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-                size: 'invisible',
-                callback: () => { /* reCAPTCHA solved */ },
-                'expired-callback': () => {
-                    console.log('reCAPTCHA expired, resetting...');
-                    recaptchaVerifier = null;
-                }
-            });
-            recaptchaVerifier.render().catch(err => {
-                console.error('reCAPTCHA render error:', err);
-            });
-        } catch (e) {
-            console.error('reCAPTCHA setup error:', e);
-        }
-    }
-
     function showAuth() {
         authContainer.classList.remove('hidden');
         app.classList.add('hidden');
-        showAuthStep('auth-welcome');
+        showAuthStep('auth-login');
     }
 
     async function showMainApp() {
@@ -344,7 +306,7 @@ const db = firebase.firestore();
         renderCustomerList();
         updateNavBadge();
 
-        // Start real-time sync — live updates across devices!
+        // Start real-time sync â€” live updates across devices!
         startRealtimeSync();
     }
 
@@ -375,14 +337,6 @@ const db = firebase.firestore();
     }
 
     // Look up user by phone number
-    function findUserByPhone(phone) {
-        const cleanPhone = phone.replace(/\D/g, '').slice(-10);
-        try {
-            const users = JSON.parse(localStorage.getItem('shopbase_users') || '[]');
-            return users.find(u => u.phone.replace(/\D/g, '').slice(-10) === cleanPhone);
-        } catch { return null; }
-    }
-
     // Look up user by email
     function findUserByEmail(email) {
         try {
@@ -423,9 +377,9 @@ const db = firebase.firestore();
         const user = {
             id: userId,
             name,
-            phone: pendingAuthData.phone || (fbUser && fbUser.phoneNumber) || '',
+            phone: '',
             email: pendingAuthData.email || (fbUser && fbUser.email) || '',
-            authMethod: pendingAuthData.method || 'phone',
+            authMethod: pendingAuthData.method || 'email',
             firebaseUid: fbUser ? fbUser.uid : null,
             createdAt: Date.now()
         };
@@ -435,7 +389,7 @@ const db = firebase.firestore();
 
         const settings = getSettings();
         settings.shopName = shopName;
-        settings.shopPhone = user.phone;
+        settings.shopPhone = '';
         settings.category = category;
         settings.shopAddress = address;
         saveSettings(settings);
@@ -444,255 +398,153 @@ const db = firebase.firestore();
         showToast(`Welcome to ShopBase, ${name.split(' ')[0]}! \uD83C\uDF89`);
     }
 
-    // ===== OTP HELPERS =====
-    function setPhoneLoading(loading) {
-        const btn = $('#btn-phone-continue');
-        const text = $('#phone-btn-text');
-        const loader = $('#phone-btn-loader');
-        btn.disabled = loading;
-        text.classList.toggle('hidden', loading);
-        loader.classList.toggle('hidden', !loading);
+    // ===== AUTH LOADING HELPERS =====
+    function setLoginLoading(loading) {
+        const btn = $('#btn-login');
+        const text = $('#login-btn-text');
+        const loader = $('#login-btn-loader');
+        if (btn) btn.disabled = loading;
+        if (text) text.classList.toggle('hidden', loading);
+        if (loader) loader.classList.toggle('hidden', !loading);
     }
 
-    function setOtpLoading(loading) {
-        const btn = $('#btn-otp-verify');
-        const text = $('#otp-btn-text');
-        const loader = $('#otp-btn-loader');
-        btn.disabled = loading;
-        text.classList.toggle('hidden', loading);
-        loader.classList.toggle('hidden', !loading);
+    function setSignupLoading(loading) {
+        const btn = $('#btn-signup');
+        const text = $('#signup-btn-text');
+        const loader = $('#signup-btn-loader');
+        if (btn) btn.disabled = loading;
+        if (text) text.classList.toggle('hidden', loading);
+        if (loader) loader.classList.toggle('hidden', !loading);
     }
 
-    function clearOtpBoxes() {
-        $$('.otp-box').forEach(b => { b.value = ''; b.classList.remove('filled'); });
-    }
-
-    function getOtpValue() {
-        return Array.from($$('.otp-box')).map(b => b.value).join('');
-    }
-
-    function startResendTimer() {
-        let seconds = 30;
-        const timerEl = $('#resend-timer');
-        const btn = $('#btn-resend-otp');
-        btn.disabled = true;
-        timerEl.textContent = seconds;
-        btn.innerHTML = `Resend in <span id="resend-timer">${seconds}</span>s`;
-
-        clearInterval(resendTimer);
-        resendTimer = setInterval(() => {
-            seconds--;
-            const el = $('#resend-timer');
-            if (el) el.textContent = seconds;
-            if (seconds <= 0) {
-                clearInterval(resendTimer);
-                btn.disabled = false;
-                btn.textContent = 'Resend OTP';
-            }
-        }, 1000);
+    function getAuthErrorMessage(code) {
+        const messages = {
+            'auth/user-not-found': 'No account found. Please sign up first.',
+            'auth/wrong-password': 'Wrong password. Try again.',
+            'auth/invalid-credential': 'Invalid email or password.',
+            'auth/email-already-in-use': 'Email already registered. Try login instead.',
+            'auth/weak-password': 'Password must be at least 6 characters.',
+            'auth/invalid-email': 'Please enter a valid email address.',
+            'auth/too-many-requests': 'Too many attempts. Wait a moment.',
+            'auth/network-request-failed': 'Network error. Check your connection.',
+        };
+        return messages[code] || 'Something went wrong. Please try again.';
     }
 
     // ===== AUTH EVENT LISTENERS =====
 
-    // Welcome → Phone
-    $('#btn-auth-phone').addEventListener('click', () => {
-        pendingAuthData = { method: 'phone' };
-        showAuthStep('auth-phone');
-        setTimeout(() => $('#auth-phone-input').focus(), 200);
+    // Switch between login and signup
+    $('#btn-goto-signup').addEventListener('click', () => showAuthStep('auth-signup'));
+    $('#btn-goto-login').addEventListener('click', () => showAuthStep('auth-login'));
+
+    // Login form
+    $('#form-login').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = $('#login-email').value.trim();
+        const password = $('#login-password').value;
+
+        if (!email || !password) { showToast('Please fill in all fields'); return; }
+
+        setLoginLoading(true);
+        $('#login-error').classList.add('hidden');
+
+        try {
+            const result = await firebaseAuth.signInWithEmailAndPassword(email, password);
+            const fbUser = result.user;
+            const existingUser = findUserByEmail(fbUser.email);
+            if (existingUser) {
+                completeLogin(existingUser);
+            } else {
+                pendingAuthData = { email: fbUser.email, method: 'email', firebaseUser: fbUser };
+                goToSetup();
+            }
+        } catch (err) {
+            console.error('Login error:', err);
+            const errorEl = $('#login-error');
+            errorEl.textContent = getAuthErrorMessage(err.code);
+            errorEl.classList.remove('hidden');
+        } finally {
+            setLoginLoading(false);
+        }
     });
 
-    // Welcome → Google (Real Firebase Google Popup)
+    // Signup form
+    $('#form-signup').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = $('#signup-name').value.trim();
+        const email = $('#signup-email').value.trim();
+        const password = $('#signup-password').value;
+
+        if (!name || !email || !password) { showToast('Please fill in all fields'); return; }
+
+        setSignupLoading(true);
+        $('#signup-error').classList.add('hidden');
+
+        try {
+            const result = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+            const fbUser = result.user;
+            await fbUser.updateProfile({ displayName: name });
+            pendingAuthData = { email: fbUser.email, method: 'email', firebaseUser: fbUser };
+            $('#setup-name').value = name;
+            goToSetup();
+        } catch (err) {
+            console.error('Signup error:', err);
+            const errorEl = $('#signup-error');
+            errorEl.textContent = getAuthErrorMessage(err.code);
+            errorEl.classList.remove('hidden');
+        } finally {
+            setSignupLoading(false);
+        }
+    });
+
+    // Google sign-in (login page)
     $('#btn-auth-google').addEventListener('click', async () => {
         pendingAuthData = { method: 'google' };
         try {
             const provider = new firebase.auth.GoogleAuthProvider();
             const result = await firebaseAuth.signInWithPopup(provider);
             const fbUser = result.user;
-
             pendingAuthData.email = fbUser.email || '';
             pendingAuthData.firebaseUser = fbUser;
-
-            // Check if local profile exists
             const existingUser = findUserByEmail(fbUser.email);
             if (existingUser) {
                 completeLogin(existingUser);
             } else {
-                // Pre-fill setup with Google data
-                const setupName = $('#setup-name');
-                if (fbUser.displayName) setupName.value = fbUser.displayName;
+                if (fbUser.displayName) $('#setup-name').value = fbUser.displayName;
                 goToSetup();
             }
         } catch (err) {
             if (err.code !== 'auth/popup-closed-by-user') {
                 showToast('Google sign-in failed. Try again.');
-                console.error('Google auth error:', err);
             }
         }
     });
 
-    // Back buttons
-    $('#btn-phone-back').addEventListener('click', () => {
-        showAuthStep('auth-welcome');
-    });
-    $('#btn-otp-back').addEventListener('click', () => {
-        showAuthStep('auth-phone');
-        clearOtpBoxes();
-        clearInterval(resendTimer);
-    });
-
-    // Phone form submit — Send OTP via Firebase
-    $('#form-phone').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const phone = $('#auth-phone-input').value.replace(/\s/g, '');
-        if (phone.length < 10) {
-            showToast('Please enter a valid 10-digit phone number');
-            return;
-        }
-
-        const fullPhone = '+91' + phone.slice(-10);
-        pendingAuthData.phone = phone;
-
-        setPhoneLoading(true);
-
-        try {
-            // Reset reCAPTCHA if needed
-            if (!recaptchaVerifier) setupRecaptcha();
-
-            // Add timeout to prevent infinite loading
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('timeout')), 25000)
-            );
-
-            confirmationResult = await Promise.race([
-                firebaseAuth.signInWithPhoneNumber(fullPhone, recaptchaVerifier),
-                timeoutPromise
-            ]);
-
-            // Show OTP screen
-            $('#otp-desc').textContent = `Enter the 6-digit code sent to +91 ${phone.slice(-10).replace(/(\d{5})(\d{5})/, '$1 $2')}`;
-            clearOtpBoxes();
-            $('#otp-error').classList.add('hidden');
-            showAuthStep('auth-otp');
-            setTimeout(() => $$('.otp-box')[0].focus(), 200);
-            startResendTimer();
-            showToast('OTP sent! Check your phone \uD83D\uDCF1');
-        } catch (err) {
-            console.error('OTP send error:', err);
-            if (err.message === 'timeout') {
-                showToast('Request timed out. Please try again.');
-            } else if (err.code === 'auth/too-many-requests') {
-                showToast('Too many attempts. Wait a few minutes.');
-            } else if (err.code === 'auth/invalid-phone-number') {
-                showToast('Invalid phone number format.');
-            } else if (err.code === 'auth/quota-exceeded') {
-                showToast('Daily SMS limit reached (10/day). Try Google login.');
-            } else if (err.code === 'auth/captcha-check-failed') {
-                showToast('Security check failed. Refresh and try again.');
-            } else {
-                showToast(`Error: ${err.code || err.message || 'Unknown'}`);
-            }
-            // Reset reCAPTCHA for retry
-            recaptchaVerifier = null;
-            setupRecaptcha();
-        } finally {
-            setPhoneLoading(false);
-        }
-    });
-
-    // OTP box behavior (6 digits)
-    $$('.otp-box').forEach((box, index) => {
-        box.addEventListener('input', (e) => {
-            const val = e.target.value.replace(/\D/g, '');
-            e.target.value = val;
-            if (val && index < 5) $$('.otp-box')[index + 1].focus();
-            e.target.classList.toggle('filled', val.length > 0);
-        });
-        box.addEventListener('keydown', (e) => {
-            if (e.key === 'Backspace' && !e.target.value && index > 0) {
-                const prev = $$('.otp-box')[index - 1];
-                prev.focus(); prev.value = ''; prev.classList.remove('filled');
-            }
-        });
-        box.addEventListener('focus', (e) => e.target.select());
-        // Handle paste
-        box.addEventListener('paste', (e) => {
-            e.preventDefault();
-            const pasteData = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
-            pasteData.split('').forEach((digit, i) => {
-                const targetBox = $$('.otp-box')[i];
-                if (targetBox) { targetBox.value = digit; targetBox.classList.add('filled'); }
-            });
-            const lastIndex = Math.min(pasteData.length, 6) - 1;
-            if (lastIndex >= 0) $$('.otp-box')[lastIndex].focus();
-        });
-    });
-
-    // OTP form submit — Verify code via Firebase
-    $('#form-otp').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const otp = getOtpValue();
-
-        if (otp.length !== 6) {
-            showToast('Please enter the full 6-digit code');
-            return;
-        }
-
-        if (!confirmationResult) {
-            showToast('Session expired. Please resend OTP.');
-            return;
-        }
-
-        setOtpLoading(true);
-        $('#otp-error').classList.add('hidden');
-
-        try {
-            const result = await confirmationResult.confirm(otp);
-            const fbUser = result.user;
-
-            // Check if local user profile exists
-            const existingUser = findUserByPhone(fbUser.phoneNumber || pendingAuthData.phone);
-            if (existingUser) {
-                completeLogin(existingUser);
-            } else {
+    // Google sign-in (signup page)
+    const googleSignupBtn = $('#btn-auth-google-signup');
+    if (googleSignupBtn) {
+        googleSignupBtn.addEventListener('click', async () => {
+            pendingAuthData = { method: 'google' };
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                const result = await firebaseAuth.signInWithPopup(provider);
+                const fbUser = result.user;
+                pendingAuthData.email = fbUser.email || '';
                 pendingAuthData.firebaseUser = fbUser;
-                goToSetup();
+                const existingUser = findUserByEmail(fbUser.email);
+                if (existingUser) {
+                    completeLogin(existingUser);
+                } else {
+                    if (fbUser.displayName) $('#setup-name').value = fbUser.displayName;
+                    goToSetup();
+                }
+            } catch (err) {
+                if (err.code !== 'auth/popup-closed-by-user') {
+                    showToast('Google sign-in failed. Try again.');
+                }
             }
-        } catch (err) {
-            console.error('OTP verify error:', err);
-            $('#otp-error').classList.remove('hidden');
-            clearOtpBoxes();
-            setTimeout(() => $$('.otp-box')[0].focus(), 100);
-            if (err.code === 'auth/invalid-verification-code') {
-                showToast('Wrong code. Try again.');
-            } else if (err.code === 'auth/code-expired') {
-                showToast('Code expired. Please resend.');
-            } else {
-                showToast('Verification failed. Try again.');
-            }
-        } finally {
-            setOtpLoading(false);
-        }
-    });
-
-    // Resend OTP
-    $('#btn-resend-otp').addEventListener('click', async () => {
-        const phone = pendingAuthData.phone;
-        if (!phone) return;
-
-        const fullPhone = '+91' + phone.slice(-10);
-        try {
-            recaptchaVerifier = null;
-            setupRecaptcha();
-            confirmationResult = await firebaseAuth.signInWithPhoneNumber(fullPhone, recaptchaVerifier);
-            showToast('New OTP sent! \uD83D\uDCE8');
-            startResendTimer();
-            clearOtpBoxes();
-            setTimeout(() => $$('.otp-box')[0].focus(), 200);
-        } catch (err) {
-            console.error('Resend error:', err);
-            showToast('Failed to resend. Try again later.');
-        }
-    });
+        });
+    }
 
     // Setup form submit
     $('#form-setup').addEventListener('submit', (e) => {
@@ -701,16 +553,10 @@ const db = firebase.firestore();
         const shopName = $('#setup-shop').value.trim();
         const category = $('#setup-category').value;
         const address = $('#setup-address').value.trim();
-
-        if (!name || !shopName) {
-            showToast('Name and shop name are required');
-            return;
-        }
-
+        if (!name || !shopName) { showToast('Name and shop name are required'); return; }
         completeSetup(name, shopName, category, address);
     });
 
-    // ===== TOAST =====
     let toastTimer;
     function showToast(message) {
         clearTimeout(toastTimer);
@@ -752,7 +598,7 @@ const db = firebase.firestore();
     function goToProfile(customerId) {
         currentCustomerId = customerId;
         showView('#view-profile');
-        // Don't change tab — keep current tab highlighted
+        // Don't change tab â€” keep current tab highlighted
         renderProfile();
     }
 
@@ -849,7 +695,7 @@ const db = firebase.firestore();
                 <div class="customer-meta">
                     <div class="customer-txn-count">${txns.length} txn${txns.length !== 1 ? 's' : ''}</div>
                     <div class="customer-last-visit">${lastVisit}</div>
-                    ${totalPending > 0 ? `<div class="customer-pending-badge">₹${formatAmount(totalPending)} due</div>` : ''}
+                    ${totalPending > 0 ? `<div class="customer-pending-badge">â‚¹${formatAmount(totalPending)} due</div>` : ''}
                 </div>
                 ${totalPending > 0 ? `<button class="customer-remind-btn" data-customer-id="${customer.id}" aria-label="Send payment reminder" title="Send WhatsApp Reminder">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
@@ -876,11 +722,11 @@ const db = firebase.firestore();
 
         profileAvatar.textContent = getInitials(customer.name);
         profileName.textContent = customer.name;
-        profilePhone.textContent = `📞 ${formatPhone(customer.phone)}`;
+        profilePhone.textContent = `ðŸ“ž ${formatPhone(customer.phone)}`;
         profilePhone.href = `tel:${customer.phone}`;
 
         if (customer.address) {
-            profileAddress.textContent = `📍 ${customer.address}`;
+            profileAddress.textContent = `ðŸ“ ${customer.address}`;
             profileAddress.classList.remove('hidden');
         } else {
             profileAddress.classList.add('hidden');
@@ -903,15 +749,15 @@ const db = firebase.firestore();
             return sum;
         }, 0);
 
-        summaryTotal.textContent = `₹${formatAmount(totalSpent)}`;
-        summaryPending.textContent = `₹${formatAmount(totalPending)}`;
+        summaryTotal.textContent = `â‚¹${formatAmount(totalSpent)}`;
+        summaryPending.textContent = `â‚¹${formatAmount(totalPending)}`;
         summaryVisits.textContent = txns.length;
 
         // Show/hide payment reminder button
         const reminderSection = $('#reminder-section');
         if (totalPending > 0) {
             reminderSection.classList.remove('hidden');
-            $('#reminder-amount').textContent = `₹${formatAmount(totalPending)} pending`;
+            $('#reminder-amount').textContent = `â‚¹${formatAmount(totalPending)} pending`;
         } else {
             reminderSection.classList.add('hidden');
         }
@@ -976,7 +822,7 @@ const db = firebase.firestore();
         const grandTotal = pendingCustomers.reduce((sum, c) => sum + c.totalPending, 0);
 
         // Update summary cards
-        $('#payments-total-pending').textContent = `₹${formatAmount(grandTotal)}`;
+        $('#payments-total-pending').textContent = `â‚¹${formatAmount(grandTotal)}`;
         $('#payments-customers-count').textContent = pendingCustomers.length;
 
         // Render list
@@ -999,10 +845,10 @@ const db = firebase.firestore();
                 <div class="pending-avatar">${getInitials(customer.name)}</div>
                 <div class="pending-info">
                     <div class="pending-name">${escapeHtml(customer.name)}</div>
-                    <div class="pending-detail">${formatPhone(customer.phone)} · ${customer.pendingTxnCount} pending txn${customer.pendingTxnCount !== 1 ? 's' : ''}</div>
+                    <div class="pending-detail">${formatPhone(customer.phone)} Â· ${customer.pendingTxnCount} pending txn${customer.pendingTxnCount !== 1 ? 's' : ''}</div>
                 </div>
                 <div class="pending-right">
-                    <span class="pending-amount">₹${formatAmount(customer.totalPending)}</span>
+                    <span class="pending-amount">â‚¹${formatAmount(customer.totalPending)}</span>
                     <button class="pending-remind-btn" data-customer-id="${customer.id}" title="Send WhatsApp Reminder">
                         ${whatsappSvg}
                     </button>
@@ -1055,13 +901,13 @@ const db = firebase.firestore();
 
             let partialInfo = '';
             if (txn.status === 'partial' && txn.paidAmount !== undefined) {
-                partialInfo = `<div class="txn-partial-info">Paid: ₹${formatAmount(txn.paidAmount)} / ₹${formatAmount(txn.amount)} — Remaining: ₹${formatAmount(txn.amount - txn.paidAmount)}</div>`;
+                partialInfo = `<div class="txn-partial-info">Paid: â‚¹${formatAmount(txn.paidAmount)} / â‚¹${formatAmount(txn.amount)} â€” Remaining: â‚¹${formatAmount(txn.amount - txn.paidAmount)}</div>`;
             }
 
             item.innerHTML = `
                 <div class="txn-top">
                     <span class="txn-item-name">${escapeHtml(txn.item)}</span>
-                    <span class="txn-amount ${amountClass}">₹${formatAmount(txn.amount)}</span>
+                    <span class="txn-amount ${amountClass}">â‚¹${formatAmount(txn.amount)}</span>
                 </div>
                 <div class="txn-bottom">
                     <span class="txn-date">${formatDateFull(new Date(txn.date).getTime())}</span>
@@ -1070,9 +916,9 @@ const db = firebase.firestore();
                 ${partialInfo}
                 ${txn.notes ? `<div class="txn-notes">${escapeHtml(txn.notes)}</div>` : ''}
                 <div class="txn-actions">
-                    <button class="txn-action-btn receipt" data-txn-id="${txn.id}" title="View Receipt">🧾 Receipt</button>
-                    <button class="txn-action-btn whatsapp" data-txn-id="${txn.id}" title="Share on WhatsApp">📱 WhatsApp</button>
-                    <button class="txn-action-btn delete" data-txn-id="${txn.id}" title="Delete">🗑️ Delete</button>
+                    <button class="txn-action-btn receipt" data-txn-id="${txn.id}" title="View Receipt">ðŸ§¾ Receipt</button>
+                    <button class="txn-action-btn whatsapp" data-txn-id="${txn.id}" title="Share on WhatsApp">ðŸ“± WhatsApp</button>
+                    <button class="txn-action-btn delete" data-txn-id="${txn.id}" title="Delete">ðŸ—‘ï¸ Delete</button>
                 </div>
             `;
 
@@ -1102,7 +948,7 @@ const db = firebase.firestore();
 
         $('#receipt-shop-name').textContent = settings.shopName || 'My Shop';
         $('#receipt-shop-address').textContent = settings.shopAddress || '';
-        $('#receipt-shop-phone').textContent = settings.shopPhone ? `📞 ${formatPhone(settings.shopPhone)}` : '';
+        $('#receipt-shop-phone').textContent = settings.shopPhone ? `ðŸ“ž ${formatPhone(settings.shopPhone)}` : '';
         if (settings.gst) {
             $('#receipt-shop-phone').textContent += ` | GST: ${settings.gst}`;
         }
@@ -1110,18 +956,18 @@ const db = firebase.firestore();
         $('#receipt-number').textContent = receiptNum;
         $('#receipt-date').textContent = `Date: ${formatDateFull(new Date(txn.date).getTime())}`;
         $('#receipt-customer-name').textContent = customer.name;
-        $('#receipt-customer-phone').textContent = `📞 ${formatPhone(customer.phone)}`;
+        $('#receipt-customer-phone').textContent = `ðŸ“ž ${formatPhone(customer.phone)}`;
 
-        $('#receipt-items').innerHTML = `<tr><td>${escapeHtml(txn.item)}</td><td>₹${formatAmount(txn.amount)}</td></tr>`;
-        $('#receipt-total').textContent = `₹${formatAmount(txn.amount)}`;
+        $('#receipt-items').innerHTML = `<tr><td>${escapeHtml(txn.item)}</td><td>â‚¹${formatAmount(txn.amount)}</td></tr>`;
+        $('#receipt-total').textContent = `â‚¹${formatAmount(txn.amount)}`;
 
         const statusLine = $('#receipt-status-line');
         statusLine.className = 'receipt-status-line ' + txn.status;
-        if (txn.status === 'paid') statusLine.textContent = '✅ PAID IN FULL';
-        else if (txn.status === 'pending') statusLine.textContent = `⏳ PAYMENT PENDING — ₹${formatAmount(txn.amount)}`;
+        if (txn.status === 'paid') statusLine.textContent = 'âœ… PAID IN FULL';
+        else if (txn.status === 'pending') statusLine.textContent = `â³ PAYMENT PENDING â€” â‚¹${formatAmount(txn.amount)}`;
         else if (txn.status === 'partial') {
             const paid = txn.paidAmount || 0;
-            statusLine.textContent = `🔄 PARTIAL — Paid ₹${formatAmount(paid)}, Due ₹${formatAmount(txn.amount - paid)}`;
+            statusLine.textContent = `ðŸ”„ PARTIAL â€” Paid â‚¹${formatAmount(paid)}, Due â‚¹${formatAmount(txn.amount - paid)}`;
         }
 
         openModal(modalReceipt);
@@ -1129,26 +975,26 @@ const db = firebase.firestore();
 
     function generateReceiptText(data) {
         const { txn, customer, settings, receiptNum } = data;
-        const divider = '━━━━━━━━━━━━━━━━━━━━━━';
+        const divider = 'â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”';
 
-        let text = `🧾 *${settings.shopName || 'My Shop'}*\n`;
-        if (settings.shopAddress) text += `📍 ${settings.shopAddress}\n`;
-        if (settings.shopPhone) text += `📞 ${formatPhone(settings.shopPhone)}\n`;
+        let text = `ðŸ§¾ *${settings.shopName || 'My Shop'}*\n`;
+        if (settings.shopAddress) text += `ðŸ“ ${settings.shopAddress}\n`;
+        if (settings.shopPhone) text += `ðŸ“ž ${formatPhone(settings.shopPhone)}\n`;
         text += `${divider}\n*Receipt #${receiptNum}*\n`;
-        text += `📅 Date: ${formatDateFull(new Date(txn.date).getTime())}\n${divider}\n`;
-        text += `*Bill To:*\n👤 ${customer.name}\n📞 ${formatPhone(customer.phone)}\n${divider}\n`;
-        text += `*Item:* ${txn.item}\n*Amount:* ₹${formatAmount(txn.amount)}\n${divider}\n`;
-        text += `*TOTAL: ₹${formatAmount(txn.amount)}*\n`;
+        text += `ðŸ“… Date: ${formatDateFull(new Date(txn.date).getTime())}\n${divider}\n`;
+        text += `*Bill To:*\nðŸ‘¤ ${customer.name}\nðŸ“ž ${formatPhone(customer.phone)}\n${divider}\n`;
+        text += `*Item:* ${txn.item}\n*Amount:* â‚¹${formatAmount(txn.amount)}\n${divider}\n`;
+        text += `*TOTAL: â‚¹${formatAmount(txn.amount)}*\n`;
 
-        if (txn.status === 'paid') text += `✅ *PAID IN FULL*\n`;
-        else if (txn.status === 'pending') text += `⏳ *PAYMENT PENDING*\n💰 Due: ₹${formatAmount(txn.amount)}\n`;
+        if (txn.status === 'paid') text += `âœ… *PAID IN FULL*\n`;
+        else if (txn.status === 'pending') text += `â³ *PAYMENT PENDING*\nðŸ’° Due: â‚¹${formatAmount(txn.amount)}\n`;
         else if (txn.status === 'partial') {
             const paid = txn.paidAmount || 0;
-            text += `🔄 *PARTIAL PAYMENT*\n💰 Paid: ₹${formatAmount(paid)} | Due: ₹${formatAmount(txn.amount - paid)}\n`;
+            text += `ðŸ”„ *PARTIAL PAYMENT*\nðŸ’° Paid: â‚¹${formatAmount(paid)} | Due: â‚¹${formatAmount(txn.amount - paid)}\n`;
         }
 
-        if (txn.notes) text += `\n📝 _${txn.notes}_\n`;
-        text += `${divider}\nThank you for your purchase! 🙏\n_Powered by ShopBase_`;
+        if (txn.notes) text += `\nðŸ“ _${txn.notes}_\n`;
+        text += `${divider}\nThank you for your purchase! ðŸ™\n_Powered by ShopBase_`;
         return text;
     }
 
@@ -1165,7 +1011,7 @@ const db = firebase.firestore();
         if (phone.length === 10) phone = '91' + phone;
 
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
-        showToast('Opening WhatsApp... 📱');
+        showToast('Opening WhatsApp... ðŸ“±');
     }
 
     function shareCurrentReceiptOnWhatsApp() {
@@ -1174,7 +1020,7 @@ const db = firebase.firestore();
         let phone = currentReceiptData.customer.phone.replace(/\D/g, '');
         if (phone.length === 10) phone = '91' + phone;
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
-        showToast('Opening WhatsApp... 📱');
+        showToast('Opening WhatsApp... ðŸ“±');
     }
 
     // ===== PAYMENT REMINDERS =====
@@ -1191,30 +1037,30 @@ const db = firebase.firestore();
             return sum;
         }, 0);
 
-        const divider = '━━━━━━━━━━━━━━━━━━━━━━';
-        let text = `🔔 *Payment Reminder*\n${divider}\n`;
+        const divider = 'â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”';
+        let text = `ðŸ”” *Payment Reminder*\n${divider}\n`;
         text += `Dear *${customer.name}*,\n\n`;
         text += `This is a friendly reminder from *${settings.shopName || 'our shop'}* regarding your pending payment.\n\n`;
-        text += `📋 *Pending Items:*\n`;
+        text += `ðŸ“‹ *Pending Items:*\n`;
 
         pendingTxns.forEach(t => {
             const date = formatDateFull(new Date(t.date).getTime());
             if (t.status === 'pending') {
-                text += `  • ${t.item} — ₹${formatAmount(t.amount)} (${date})\n`;
+                text += `  â€¢ ${t.item} â€” â‚¹${formatAmount(t.amount)} (${date})\n`;
             } else if (t.status === 'partial') {
                 const remaining = (t.amount || 0) - (t.paidAmount || 0);
-                text += `  • ${t.item} — ₹${formatAmount(remaining)} remaining (${date})\n`;
+                text += `  â€¢ ${t.item} â€” â‚¹${formatAmount(remaining)} remaining (${date})\n`;
             }
         });
 
         text += `\n${divider}\n`;
-        text += `💰 *Total Pending: ₹${formatAmount(totalPending)}*\n`;
+        text += `ðŸ’° *Total Pending: â‚¹${formatAmount(totalPending)}*\n`;
         text += `${divider}\n\n`;
         text += `Please clear the dues at your earliest convenience.\n\n`;
-        text += `Thank you! 🙏\n\n`;
-        text += `— *${settings.shopName || 'My Shop'}*\n`;
-        if (settings.shopAddress) text += `📍 ${settings.shopAddress}\n`;
-        if (settings.shopPhone) text += `📞 ${formatPhone(settings.shopPhone)}\n`;
+        text += `Thank you! ðŸ™\n\n`;
+        text += `â€” *${settings.shopName || 'My Shop'}*\n`;
+        if (settings.shopAddress) text += `ðŸ“ ${settings.shopAddress}\n`;
+        if (settings.shopPhone) text += `ðŸ“ž ${formatPhone(settings.shopPhone)}\n`;
         text += `\n_Sent via ShopBase_`;
 
         return text;
@@ -1231,7 +1077,7 @@ const db = firebase.firestore();
         if (phone.length === 10) phone = '91' + phone;
 
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
-        showToast('Opening WhatsApp reminder... 📱');
+        showToast('Opening WhatsApp reminder... ðŸ“±');
     }
 
     function sendReminderForCurrentCustomer() {
@@ -1256,8 +1102,8 @@ const db = firebase.firestore();
 
         $('#stat-customers').textContent = customers.length;
         $('#stat-transactions').textContent = allTxns.length;
-        $('#stat-revenue').textContent = `₹${formatAmount(totalRevenue)}`;
-        $('#stat-pending').textContent = `₹${formatAmount(totalPending)}`;
+        $('#stat-revenue').textContent = `â‚¹${formatAmount(totalRevenue)}`;
+        $('#stat-pending').textContent = `â‚¹${formatAmount(totalPending)}`;
         updateNavBadge();
     }
 
@@ -1344,7 +1190,7 @@ const db = firebase.firestore();
         a.download = `shopbase-backup-${new Date().toISOString().split('T')[0]}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        showToast('Data exported successfully ✓');
+        showToast('Data exported successfully âœ“');
     }
 
     // ===== MODALS =====
@@ -1499,7 +1345,7 @@ const db = firebase.firestore();
     // Payment reminder (profile page)
     $('#btn-send-reminder').addEventListener('click', sendReminderForCurrentCustomer);
 
-    // Quick remind buttons (customer list) — delegated
+    // Quick remind buttons (customer list) â€” delegated
     customerListEl.addEventListener('click', (e) => {
         const remindBtn = e.target.closest('.customer-remind-btn');
         if (remindBtn) {
@@ -1568,12 +1414,12 @@ const db = firebase.firestore();
         if (editingCustomerId) {
             updateCustomer(editingCustomerId, name, phone, email, address, notes);
             closeModal(modalCustomer);
-            showToast('Customer updated ✓');
+            showToast('Customer updated âœ“');
             if (currentCustomerId === editingCustomerId) renderProfile();
         } else {
             addCustomer(name, phone, email, address, notes);
             closeModal(modalCustomer);
-            showToast('Customer added ✓');
+            showToast('Customer added âœ“');
             renderCustomerList();
         }
         editingCustomerId = null;
@@ -1594,7 +1440,7 @@ const db = firebase.firestore();
         addTransaction(currentCustomerId, item, amount, date, status, paidAmount, notes);
         closeModal(modalTransaction);
         renderProfile();
-        showToast('Transaction added ✓');
+        showToast('Transaction added âœ“');
     });
 
     // Settings form submit
@@ -1618,7 +1464,7 @@ const db = firebase.firestore();
         // If on owner profile, refresh it
         if (viewOwner.classList.contains('active')) renderOwnerProfile();
 
-        showToast('Shop settings saved ✓');
+        showToast('Shop settings saved âœ“');
     });
 
     // Keyboard: Escape to close modals

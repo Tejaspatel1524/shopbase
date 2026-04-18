@@ -45,108 +45,107 @@
     <!-- ========== AUTH CONTAINER ========== -->
     <div id="auth-container" class="auth-container hidden">
 
-        <!-- STEP: Welcome -->
-        <div id="auth-welcome" class="auth-step active">
+        <!-- STEP: Login -->
+        <div id="auth-login" class="auth-step active">
             <div class="auth-card">
                 <div class="auth-brand">
                     <div class="auth-logo">
                         <svg width="44" height="44" viewBox="0 0 64 64" fill="none">
-                            <rect x="6" y="14" width="52" height="40" rx="8" stroke="url(#ag1)" stroke-width="2.5"/>
-                            <path d="M6 26h52" stroke="url(#ag1)" stroke-width="2.5"/>
-                            <circle cx="22" cy="38" r="3.5" fill="url(#ag1)"/>
-                            <circle cx="32" cy="38" r="3.5" fill="url(#ag2)"/>
-                            <circle cx="42" cy="38" r="3.5" fill="url(#ag2)"/>
-                            <defs>
-                                <linearGradient id="ag1" x1="0" y1="0" x2="64" y2="64">
-                                    <stop stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/>
-                                </linearGradient>
-                                <linearGradient id="ag2" x1="0" y1="0" x2="64" y2="64">
-                                    <stop stop-color="#8b5cf6"/><stop offset="1" stop-color="#06b6d4"/>
-                                </linearGradient>
-                            </defs>
+                            <rect x="6" y="14" width="52" height="40" rx="8" stroke="white" stroke-width="2.5"/>
+                            <path d="M6 26h52" stroke="white" stroke-width="2.5"/>
+                            <circle cx="22" cy="38" r="3.5" fill="white"/>
+                            <circle cx="32" cy="38" r="3.5" fill="rgba(255,255,255,0.7)"/>
+                            <circle cx="42" cy="38" r="3.5" fill="rgba(255,255,255,0.5)"/>
                         </svg>
                     </div>
                     <h1 class="auth-title">ShopBase</h1>
                     <p class="auth-desc">Smart customer management for your shop</p>
                 </div>
 
-                <div class="auth-buttons">
-                    <button id="btn-auth-google" class="btn-google" type="button">
-                        <svg width="20" height="20" viewBox="0 0 24 24">
-                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                        </svg>
-                        Continue with Google
-                    </button>
-
-                    <div class="auth-divider">
-                        <span>or</span>
+                <form id="form-login" class="auth-form">
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" placeholder="you@example.com" required>
                     </div>
-
-                    <button id="btn-auth-phone" class="btn-phone-auth" type="button">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect width="14" height="20" x="5" y="2" rx="2" ry="2"/>
-                            <path d="M12 18h.01"/>
-                        </svg>
-                        Continue with Phone
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" placeholder="Enter your password" minlength="6" required>
+                    </div>
+                    <p id="login-error" class="auth-error hidden"></p>
+                    <button type="submit" class="btn-primary" id="btn-login">
+                        <span id="login-btn-text">Login</span>
+                        <span id="login-btn-loader" class="btn-loader hidden"></span>
                     </button>
-                </div>
+                </form>
+
+                <p class="auth-switch">Don't have an account? <button type="button" id="btn-goto-signup" class="link-btn">Sign Up</button></p>
+
+                <div class="auth-divider"><span>or</span></div>
+
+                <button id="btn-auth-google" class="btn-google" type="button">
+                    <svg width="20" height="20" viewBox="0 0 24 24">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                    </svg>
+                    Continue with Google
+                </button>
 
                 <p class="auth-terms">By continuing, you agree to our <a href="#">Terms</a> &amp; <a href="#">Privacy Policy</a></p>
             </div>
         </div>
 
-        <!-- STEP: Phone Auth -->
-        <div id="auth-phone" class="auth-step">
+        <!-- STEP: Sign Up -->
+        <div id="auth-signup" class="auth-step">
             <div class="auth-card">
-                <button id="btn-phone-back" class="auth-back" aria-label="Go back" type="button">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                </button>
-                <h2 class="auth-step-title">Enter your phone</h2>
-                <p class="auth-step-desc">We'll send you a one-time verification code</p>
-
-                <form id="form-phone" class="auth-form">
-                    <div class="phone-input-group">
-                        <span class="phone-prefix">+91</span>
-                        <input type="tel" id="auth-phone-input" class="phone-input" placeholder="98765 43210" maxlength="12" autocomplete="tel" required>
+                <div class="auth-brand">
+                    <div class="auth-logo">
+                        <svg width="44" height="44" viewBox="0 0 64 64" fill="none">
+                            <rect x="6" y="14" width="52" height="40" rx="8" stroke="white" stroke-width="2.5"/>
+                            <path d="M6 26h52" stroke="white" stroke-width="2.5"/>
+                            <circle cx="22" cy="38" r="3.5" fill="white"/>
+                            <circle cx="32" cy="38" r="3.5" fill="rgba(255,255,255,0.7)"/>
+                            <circle cx="42" cy="38" r="3.5" fill="rgba(255,255,255,0.5)"/>
+                        </svg>
                     </div>
-                    <button type="submit" class="btn-primary" id="btn-phone-continue">
-                        <span id="phone-btn-text">Send OTP</span>
-                        <span id="phone-btn-loader" class="btn-loader hidden"></span>
-                    </button>
-                    <div id="recaptcha-container"></div>
-                </form>
-            </div>
-        </div>
+                    <h1 class="auth-title">Create Account</h1>
+                    <p class="auth-desc">Set up your shop in 30 seconds</p>
+                </div>
 
-
-        <!-- STEP: OTP Verification -->
-        <div id="auth-otp" class="auth-step">
-            <div class="auth-card">
-                <button id="btn-otp-back" class="auth-back" aria-label="Go back" type="button">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                </button>
-                <h2 class="auth-step-title">Verify OTP</h2>
-                <p class="auth-step-desc" id="otp-desc">Enter the 6-digit code sent to your phone</p>
-
-                <form id="form-otp" class="auth-form">
-                    <div class="otp-input-group" id="otp-boxes">
-                        <input type="tel" class="otp-box" maxlength="1" data-index="0" autocomplete="one-time-code" inputmode="numeric" required>
-                        <input type="tel" class="otp-box" maxlength="1" data-index="1" autocomplete="off" inputmode="numeric" required>
-                        <input type="tel" class="otp-box" maxlength="1" data-index="2" autocomplete="off" inputmode="numeric" required>
-                        <input type="tel" class="otp-box" maxlength="1" data-index="3" autocomplete="off" inputmode="numeric" required>
-                        <input type="tel" class="otp-box" maxlength="1" data-index="4" autocomplete="off" inputmode="numeric" required>
-                        <input type="tel" class="otp-box" maxlength="1" data-index="5" autocomplete="off" inputmode="numeric" required>
+                <form id="form-signup" class="auth-form">
+                    <div class="form-group">
+                        <label for="signup-name">Your Name</label>
+                        <input type="text" id="signup-name" placeholder="e.g. Rahul Sharma" required>
                     </div>
-                    <p id="otp-error" class="auth-error hidden">Invalid code. Please try again.</p>
-                    <button type="submit" class="btn-primary" id="btn-otp-verify">
-                        <span id="otp-btn-text">Verify & Continue</span>
-                        <span id="otp-btn-loader" class="btn-loader hidden"></span>
+                    <div class="form-group">
+                        <label for="signup-email">Email</label>
+                        <input type="email" id="signup-email" placeholder="you@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password">Password</label>
+                        <input type="password" id="signup-password" placeholder="Min 6 characters" minlength="6" required>
+                    </div>
+                    <p id="signup-error" class="auth-error hidden"></p>
+                    <button type="submit" class="btn-primary" id="btn-signup">
+                        <span id="signup-btn-text">Create Account</span>
+                        <span id="signup-btn-loader" class="btn-loader hidden"></span>
                     </button>
-                    <p class="otp-resend">Didn't receive the code? <button type="button" id="btn-resend-otp" class="link-btn" disabled>Resend in <span id="resend-timer">30</span>s</button></p>
                 </form>
+
+                <p class="auth-switch">Already have an account? <button type="button" id="btn-goto-login" class="link-btn">Login</button></p>
+
+                <div class="auth-divider"><span>or</span></div>
+
+                <button id="btn-auth-google-signup" class="btn-google" type="button">
+                    <svg width="20" height="20" viewBox="0 0 24 24">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                    </svg>
+                    Continue with Google
+                </button>
             </div>
         </div>
 
@@ -154,7 +153,7 @@
         <div id="auth-setup" class="auth-step">
             <div class="auth-card">
                 <h2 class="auth-step-title">Set up your shop</h2>
-                <p class="auth-step-desc">Tell us about yourself and your business</p>
+                <p class="auth-step-desc">Tell us about your business</p>
 
                 <form id="form-setup" class="auth-form">
                     <div class="form-group">
@@ -188,6 +187,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- ========== MAIN APP ========== -->
     <div id="app" class="app hidden">
