@@ -695,7 +695,7 @@ const db = firebase.firestore();
                 <div class="customer-meta">
                     <div class="customer-txn-count">${txns.length} txn${txns.length !== 1 ? 's' : ''}</div>
                     <div class="customer-last-visit">${lastVisit}</div>
-                    ${totalPending > 0 ? `<div class="customer-pending-badge">â‚¹${formatAmount(totalPending)} due</div>` : ''}
+                    ${totalPending > 0 ? `<div class="customer-pending-badge">₹${formatAmount(totalPending)} due</div>` : ''}
                 </div>
                 ${totalPending > 0 ? `<button class="customer-remind-btn" data-customer-id="${customer.id}" aria-label="Send payment reminder" title="Send WhatsApp Reminder">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
@@ -749,15 +749,15 @@ const db = firebase.firestore();
             return sum;
         }, 0);
 
-        summaryTotal.textContent = `â‚¹${formatAmount(totalSpent)}`;
-        summaryPending.textContent = `â‚¹${formatAmount(totalPending)}`;
+        summaryTotal.textContent = `₹${formatAmount(totalSpent)}`;
+        summaryPending.textContent = `₹${formatAmount(totalPending)}`;
         summaryVisits.textContent = txns.length;
 
         // Show/hide payment reminder button
         const reminderSection = $('#reminder-section');
         if (totalPending > 0) {
             reminderSection.classList.remove('hidden');
-            $('#reminder-amount').textContent = `â‚¹${formatAmount(totalPending)} pending`;
+            $('#reminder-amount').textContent = `₹${formatAmount(totalPending)} pending`;
         } else {
             reminderSection.classList.add('hidden');
         }
@@ -822,7 +822,7 @@ const db = firebase.firestore();
         const grandTotal = pendingCustomers.reduce((sum, c) => sum + c.totalPending, 0);
 
         // Update summary cards
-        $('#payments-total-pending').textContent = `â‚¹${formatAmount(grandTotal)}`;
+        $('#payments-total-pending').textContent = `₹${formatAmount(grandTotal)}`;
         $('#payments-customers-count').textContent = pendingCustomers.length;
 
         // Render list
@@ -848,7 +848,7 @@ const db = firebase.firestore();
                     <div class="pending-detail">${formatPhone(customer.phone)} Â· ${customer.pendingTxnCount} pending txn${customer.pendingTxnCount !== 1 ? 's' : ''}</div>
                 </div>
                 <div class="pending-right">
-                    <span class="pending-amount">â‚¹${formatAmount(customer.totalPending)}</span>
+                    <span class="pending-amount">₹${formatAmount(customer.totalPending)}</span>
                     <button class="pending-remind-btn" data-customer-id="${customer.id}" title="Send WhatsApp Reminder">
                         ${whatsappSvg}
                     </button>
@@ -901,13 +901,13 @@ const db = firebase.firestore();
 
             let partialInfo = '';
             if (txn.status === 'partial' && txn.paidAmount !== undefined) {
-                partialInfo = `<div class="txn-partial-info">Paid: â‚¹${formatAmount(txn.paidAmount)} / â‚¹${formatAmount(txn.amount)} â€” Remaining: â‚¹${formatAmount(txn.amount - txn.paidAmount)}</div>`;
+                partialInfo = `<div class="txn-partial-info">Paid: ₹${formatAmount(txn.paidAmount)} / ₹${formatAmount(txn.amount)} â€” Remaining: ₹${formatAmount(txn.amount - txn.paidAmount)}</div>`;
             }
 
             item.innerHTML = `
                 <div class="txn-top">
                     <span class="txn-item-name">${escapeHtml(txn.item)}</span>
-                    <span class="txn-amount ${amountClass}">â‚¹${formatAmount(txn.amount)}</span>
+                    <span class="txn-amount ${amountClass}">₹${formatAmount(txn.amount)}</span>
                 </div>
                 <div class="txn-bottom">
                     <span class="txn-date">${formatDateFull(new Date(txn.date).getTime())}</span>
@@ -958,16 +958,16 @@ const db = firebase.firestore();
         $('#receipt-customer-name').textContent = customer.name;
         $('#receipt-customer-phone').textContent = `ðŸ“ž ${formatPhone(customer.phone)}`;
 
-        $('#receipt-items').innerHTML = `<tr><td>${escapeHtml(txn.item)}</td><td>â‚¹${formatAmount(txn.amount)}</td></tr>`;
-        $('#receipt-total').textContent = `â‚¹${formatAmount(txn.amount)}`;
+        $('#receipt-items').innerHTML = `<tr><td>${escapeHtml(txn.item)}</td><td>₹${formatAmount(txn.amount)}</td></tr>`;
+        $('#receipt-total').textContent = `₹${formatAmount(txn.amount)}`;
 
         const statusLine = $('#receipt-status-line');
         statusLine.className = 'receipt-status-line ' + txn.status;
         if (txn.status === 'paid') statusLine.textContent = 'âœ… PAID IN FULL';
-        else if (txn.status === 'pending') statusLine.textContent = `â³ PAYMENT PENDING â€” â‚¹${formatAmount(txn.amount)}`;
+        else if (txn.status === 'pending') statusLine.textContent = `â³ PAYMENT PENDING â€” ₹${formatAmount(txn.amount)}`;
         else if (txn.status === 'partial') {
             const paid = txn.paidAmount || 0;
-            statusLine.textContent = `ðŸ”„ PARTIAL â€” Paid â‚¹${formatAmount(paid)}, Due â‚¹${formatAmount(txn.amount - paid)}`;
+            statusLine.textContent = `ðŸ”„ PARTIAL â€” Paid ₹${formatAmount(paid)}, Due ₹${formatAmount(txn.amount - paid)}`;
         }
 
         openModal(modalReceipt);
@@ -983,14 +983,14 @@ const db = firebase.firestore();
         text += `${divider}\n*Receipt #${receiptNum}*\n`;
         text += `ðŸ“… Date: ${formatDateFull(new Date(txn.date).getTime())}\n${divider}\n`;
         text += `*Bill To:*\nðŸ‘¤ ${customer.name}\nðŸ“ž ${formatPhone(customer.phone)}\n${divider}\n`;
-        text += `*Item:* ${txn.item}\n*Amount:* â‚¹${formatAmount(txn.amount)}\n${divider}\n`;
-        text += `*TOTAL: â‚¹${formatAmount(txn.amount)}*\n`;
+        text += `*Item:* ${txn.item}\n*Amount:* ₹${formatAmount(txn.amount)}\n${divider}\n`;
+        text += `*TOTAL: ₹${formatAmount(txn.amount)}*\n`;
 
         if (txn.status === 'paid') text += `âœ… *PAID IN FULL*\n`;
-        else if (txn.status === 'pending') text += `â³ *PAYMENT PENDING*\nðŸ’° Due: â‚¹${formatAmount(txn.amount)}\n`;
+        else if (txn.status === 'pending') text += `â³ *PAYMENT PENDING*\nðŸ’° Due: ₹${formatAmount(txn.amount)}\n`;
         else if (txn.status === 'partial') {
             const paid = txn.paidAmount || 0;
-            text += `ðŸ”„ *PARTIAL PAYMENT*\nðŸ’° Paid: â‚¹${formatAmount(paid)} | Due: â‚¹${formatAmount(txn.amount - paid)}\n`;
+            text += `ðŸ”„ *PARTIAL PAYMENT*\nðŸ’° Paid: ₹${formatAmount(paid)} | Due: ₹${formatAmount(txn.amount - paid)}\n`;
         }
 
         if (txn.notes) text += `\nðŸ“ _${txn.notes}_\n`;
@@ -1046,15 +1046,15 @@ const db = firebase.firestore();
         pendingTxns.forEach(t => {
             const date = formatDateFull(new Date(t.date).getTime());
             if (t.status === 'pending') {
-                text += `  â€¢ ${t.item} â€” â‚¹${formatAmount(t.amount)} (${date})\n`;
+                text += `  â€¢ ${t.item} â€” ₹${formatAmount(t.amount)} (${date})\n`;
             } else if (t.status === 'partial') {
                 const remaining = (t.amount || 0) - (t.paidAmount || 0);
-                text += `  â€¢ ${t.item} â€” â‚¹${formatAmount(remaining)} remaining (${date})\n`;
+                text += `  â€¢ ${t.item} â€” ₹${formatAmount(remaining)} remaining (${date})\n`;
             }
         });
 
         text += `\n${divider}\n`;
-        text += `ðŸ’° *Total Pending: â‚¹${formatAmount(totalPending)}*\n`;
+        text += `ðŸ’° *Total Pending: ₹${formatAmount(totalPending)}*\n`;
         text += `${divider}\n\n`;
         text += `Please clear the dues at your earliest convenience.\n\n`;
         text += `Thank you! ðŸ™\n\n`;
@@ -1102,8 +1102,8 @@ const db = firebase.firestore();
 
         $('#stat-customers').textContent = customers.length;
         $('#stat-transactions').textContent = allTxns.length;
-        $('#stat-revenue').textContent = `â‚¹${formatAmount(totalRevenue)}`;
-        $('#stat-pending').textContent = `â‚¹${formatAmount(totalPending)}`;
+        $('#stat-revenue').textContent = `₹${formatAmount(totalRevenue)}`;
+        $('#stat-pending').textContent = `₹${formatAmount(totalPending)}`;
         updateNavBadge();
     }
 
