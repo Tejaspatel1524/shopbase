@@ -265,8 +265,34 @@ const db = firebase.firestore();
 
  // ===== INIT =====
  function initApp() {
- setTimeout(() => {
+ setTimeout(async () => {
  splash.classList.add('hidden');
+
+ // Handle redirect result from Google sign-in (popup fallback)
+ try {
+ const redirectResult = await firebaseAuth.getRedirectResult();
+ if (redirectResult && redirectResult.user) {
+ const fbUser = redirectResult.user;
+ pendingAuthData = {
+ method: 'google',
+ email: fbUser.email || '',
+ firebaseUser: fbUser
+ };
+ const existingUser = findUserByEmail(fbUser.email);
+ if (existingUser) {
+ completeLogin(existingUser);
+ return;
+ } else {
+ if (fbUser.displayName) $('#setup-name').value = fbUser.displayName;
+ authContainer.classList.remove('hidden');
+ app.classList.add('hidden');
+ goToSetup();
+ return;
+ }
+ }
+ } catch (err) {
+ console.error('Redirect result error:', err);
+ }
 
  // Listen for Firebase auth state
  firebaseAuth.onAuthStateChanged((firebaseUser) => {
@@ -497,11 +523,12 @@ const db = firebase.firestore();
  }
  });
 
- // Google sign-in (login page)
- $('#btn-auth-google').addEventListener('click', async () => {
+ // Google sign-in helper with popup -> redirect fallback
+ async function handleGoogleSignIn() {
  pendingAuthData = { method: 'google' };
- try {
  const provider = new firebase.auth.GoogleAuthProvider();
+
+ try {
  const result = await firebaseAuth.signInWithPopup(provider);
  const fbUser = result.user;
  pendingAuthData.email = fbUser.email || '';
@@ -514,36 +541,44 @@ const db = firebase.firestore();
  goToSetup();
  }
  } catch (err) {
- if (err.code !== 'auth/popup-closed-by-user') {
- showToast('Google sign-in failed. Try again.');
+ console.error('Google sign-in error:', err);
+ if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+ return;
  }
- }
- });
 
- // Google sign-in (signup page)
+ if (err.code === 'auth/popup-blocked' ||
+ err.code === 'auth/operation-not-supported-in-this-environment') {
+ showToast('Popup blocked. Redirecting to Google...');
+ try {
+ await firebaseAuth.signInWithRedirect(provider);
+ } catch (redirectErr) {
+ console.error('Redirect error:', redirectErr);
+ showToast('Google sign-in failed. Check your connection.');
+ }
+ return;
+ }
+
+ if (err.code === 'auth/unauthorized-domain') {
+ showToast('Domain not authorized. Add it in Firebase Console > Auth > Settings.');
+ return;
+ }
+
+ const msgs = {
+ 'auth/account-exists-with-different-credential': 'Account exists with different sign-in method.',
+ 'auth/network-request-failed': 'Network error. Check connection.',
+ 'auth/internal-error': 'Something went wrong. Try again.',
+ };
+ showToast(msgs[err.code] || 'Sign-in failed: ' + (err.message || 'Unknown error'));
+ }
+ }
+
+ // Google sign-in (login page)
+ $('#btn-auth-google').addEventListener('click', handleGoogleSignIn);
+
+ // Google sign-in (signup page) - reuses shared handler
  const googleSignupBtn = $('#btn-auth-google-signup');
  if (googleSignupBtn) {
- googleSignupBtn.addEventListener('click', async () => {
- pendingAuthData = { method: 'google' };
- try {
- const provider = new firebase.auth.GoogleAuthProvider();
- const result = await firebaseAuth.signInWithPopup(provider);
- const fbUser = result.user;
- pendingAuthData.email = fbUser.email || '';
- pendingAuthData.firebaseUser = fbUser;
- const existingUser = findUserByEmail(fbUser.email);
- if (existingUser) {
- completeLogin(existingUser);
- } else {
- if (fbUser.displayName) $('#setup-name').value = fbUser.displayName;
- goToSetup();
- }
- } catch (err) {
- if (err.code !== 'auth/popup-closed-by-user') {
- showToast('Google sign-in failed. Try again.');
- }
- }
- });
+ googleSignupBtn.addEventListener('click', handleGoogleSignIn);
  }
 
  // Setup form submit
