@@ -1,6 +1,6 @@
-# ShopBase - Customer Manager
+# CustBook - Customer Manager
 
-ShopBase is a smart, mobile-friendly customer management application designed specifically for shopkeepers. It helps retail business owners easily track customers, record purchases, and manage pending payments all from their browser or mobile device.
+CustBook is a smart, mobile-friendly customer management application designed specifically for shopkeepers. It helps retail business owners easily track customers, record purchases, and manage pending payments all from their browser or mobile device.
 
 ## Features
 

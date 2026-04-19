@@ -1,6 +1,6 @@
 {
-    "name": "ShopBase — Customer Manager",
-    "short_name": "ShopBase",
+    "name": "CustBook - Customer Manager",
+    "short_name": "CustBook",
     "description": "Smart Customer Management for Shopkeepers. Track customers, purchases, and payment history.",
     "start_url": "/",
     "display": "standalone",

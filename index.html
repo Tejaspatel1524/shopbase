@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="description" content="ShopBase - Smart Customer Management for Shopkeepers. Track customers, purchases, and payment history.">
+    <meta name="description" content="CustBook - Smart Customer Management for Shopkeepers. Track customers, purchases, and payment history.">
     <meta name="theme-color" content="#0c111d">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>ShopBase — Customer Manager</title>
+    <title>CustBook - Customer Manager</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -36,7 +36,7 @@
                     </defs>
                 </svg>
             </div>
-            <h1 class="splash-title">ShopBase</h1>
+            <h1 class="splash-title">CustBook</h1>
             <p class="splash-subtitle">Customer Manager</p>
             <div class="splash-loader"><div class="splash-loader-bar"></div></div>
         </div>
@@ -58,7 +58,7 @@
                             <circle cx="42" cy="38" r="3.5" fill="rgba(255,255,255,0.5)"/>
                         </svg>
                     </div>
-                    <h1 class="auth-title">ShopBase</h1>
+                    <h1 class="auth-title">CustBook</h1>
                     <p class="auth-desc">Smart customer management for your shop</p>
                 </div>
 
@@ -197,7 +197,7 @@
             <header class="app-header">
                 <div class="header-top">
                     <div class="header-left">
-                        <h1 class="app-title">ShopBase</h1>
+                        <h1 class="app-title">CustBook</h1>
                         <p class="app-tagline" id="header-shop-name">Your Customers, Your Data</p>
                     </div>
                     <div class="header-actions">
@@ -216,7 +216,7 @@
                         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
                     </svg>
                     <input type="text" id="search-input" class="search-input" placeholder="Search by name or phone..." autocomplete="off">
-                    <button id="search-clear" class="search-clear hidden" aria-label="Clear search">✕</button>
+                    <button id="search-clear" class="search-clear hidden" aria-label="Clear search">X</button>
                 </div>
             </header>
 
@@ -231,11 +231,11 @@
                     <span class="stat-label">Transactions</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value" id="stat-revenue">₹0</span>
+                    <span class="stat-value" id="stat-revenue">Rs.0</span>
                     <span class="stat-label">Total Revenue</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value" id="stat-pending">₹0</span>
+                    <span class="stat-value" id="stat-pending">Rs.0</span>
                     <span class="stat-label">Pending</span>
                 </div>
             </div>
@@ -297,11 +297,11 @@
 
             <div class="profile-summary">
                 <div class="summary-item">
-                    <span class="summary-value" id="summary-total">₹0</span>
+                    <span class="summary-value" id="summary-total">Rs.0</span>
                     <span class="summary-label">Total Spent</span>
                 </div>
                 <div class="summary-item">
-                    <span class="summary-value pending" id="summary-pending">₹0</span>
+                    <span class="summary-value pending" id="summary-pending">Rs.0</span>
                     <span class="summary-label">Pending</span>
                 </div>
                 <div class="summary-item">
@@ -315,7 +315,7 @@
                 <button id="btn-send-reminder" class="btn-reminder" type="button">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
                     <span>Send Payment Reminder</span>
-                    <span class="reminder-amount" id="reminder-amount">₹0 pending</span>
+                    <span class="reminder-amount" id="reminder-amount">Rs.0 pending</span>
                 </button>
             </div>
 
@@ -340,14 +340,14 @@
 
             <div class="payments-summary-cards">
                 <div class="payments-stat total-pending">
-                    <span class="payments-stat-icon">⏳</span>
+                    <span class="payments-stat-icon"></span>
                     <div>
-                        <span class="payments-stat-value" id="payments-total-pending">₹0</span>
+                        <span class="payments-stat-value" id="payments-total-pending">Rs.0</span>
                         <span class="payments-stat-label">Total Pending</span>
                     </div>
                 </div>
                 <div class="payments-stat total-customers">
-                    <span class="payments-stat-icon">👥</span>
+                    <span class="payments-stat-icon"></span>
                     <div>
                         <span class="payments-stat-value" id="payments-customers-count">0</span>
                         <span class="payments-stat-label">Customers with Dues</span>
@@ -366,7 +366,7 @@
                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
                         </svg>
                     </div>
-                    <h3>All Clear! 🎉</h3>
+                    <h3>All Clear!</h3>
                     <p>No pending payments. All customers have paid up!</p>
                 </div>
             </div>
@@ -461,7 +461,7 @@
         <div class="modal">
             <div class="modal-header">
                 <h2 id="modal-customer-title">Add Customer</h2>
-                <button class="modal-close" id="modal-customer-close" aria-label="Close">✕</button>
+                <button class="modal-close" id="modal-customer-close" aria-label="Close">X</button>
             </div>
             <form id="form-customer" class="modal-form">
                 <div class="form-group">
@@ -494,7 +494,7 @@
         <div class="modal">
             <div class="modal-header">
                 <h2>Add Transaction</h2>
-                <button class="modal-close" id="modal-transaction-close" aria-label="Close">✕</button>
+                <button class="modal-close" id="modal-transaction-close" aria-label="Close">X</button>
             </div>
             <form id="form-transaction" class="modal-form">
                 <div class="form-group">
@@ -502,7 +502,7 @@
                     <input type="text" id="input-item" placeholder="e.g. iPhone 15, Screen Guard" required>
                 </div>
                 <div class="form-group">
-                    <label for="input-amount">Amount (₹) *</label>
+                    <label for="input-amount">Amount (Rs.) *</label>
                     <input type="number" id="input-amount" placeholder="e.g. 15000" min="0" required>
                 </div>
                 <div class="form-group">
@@ -512,13 +512,13 @@
                 <div class="form-group">
                     <label for="input-status">Payment Status</label>
                     <select id="input-status">
-                        <option value="paid">✅ Paid</option>
-                        <option value="pending">⏳ Pending</option>
-                        <option value="partial">🔄 Partial</option>
+                        <option value="paid">Paid</option>
+                        <option value="pending">Pending</option>
+                        <option value="partial">Partial</option>
                     </select>
                 </div>
                 <div class="form-group hidden" id="partial-amount-group">
-                    <label for="input-paid-amount">Amount Paid (₹)</label>
+                    <label for="input-paid-amount">Amount Paid (Rs.)</label>
                     <input type="number" id="input-paid-amount" placeholder="e.g. 5000" min="0">
                 </div>
                 <div class="form-group">
@@ -535,7 +535,7 @@
         <div class="modal modal-small">
             <div class="modal-header">
                 <h2>Delete Customer?</h2>
-                <button class="modal-close" id="modal-delete-close" aria-label="Close">✕</button>
+                <button class="modal-close" id="modal-delete-close" aria-label="Close">X</button>
             </div>
             <p class="modal-message">This will permanently delete this customer and all their transaction history. This action cannot be undone.</p>
             <div class="modal-actions">
@@ -550,7 +550,7 @@
         <div class="modal modal-receipt">
             <div class="modal-header">
                 <h2>Receipt</h2>
-                <button class="modal-close" id="modal-receipt-close" aria-label="Close">✕</button>
+                <button class="modal-close" id="modal-receipt-close" aria-label="Close">X</button>
             </div>
             <div id="receipt-content" class="receipt">
                 <div class="receipt-header">
@@ -578,13 +578,13 @@
                 <div class="receipt-divider">- - - - - - - - - - - - - - - - - - - -</div>
                 <div class="receipt-total">
                     <span>TOTAL</span>
-                    <span id="receipt-total">₹0</span>
+                    <span id="receipt-total">Rs.0</span>
                 </div>
                 <div class="receipt-status-line" id="receipt-status-line"></div>
                 <div class="receipt-divider">- - - - - - - - - - - - - - - - - - - -</div>
                 <div class="receipt-footer">
                     <p>Thank you for your purchase!</p>
-                    <p class="receipt-powered">Powered by ShopBase</p>
+                    <p class="receipt-powered">Powered by CustBook</p>
                 </div>
             </div>
             <div class="receipt-actions">
@@ -592,7 +592,7 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
                     Share on WhatsApp
                 </button>
-                <button id="btn-print-receipt" class="btn-secondary">🖨️ Print</button>
+                <button id="btn-print-receipt" class="btn-secondary">Print</button>
             </div>
         </div>
     </div>
@@ -602,7 +602,7 @@
         <div class="modal">
             <div class="modal-header">
                 <h2>Shop Settings</h2>
-                <button class="modal-close" id="modal-settings-close" aria-label="Close">✕</button>
+                <button class="modal-close" id="modal-settings-close" aria-label="Close">X</button>
             </div>
             <form id="form-settings" class="modal-form">
                 <div class="form-group">
@@ -635,7 +635,7 @@
         <div class="modal modal-small">
             <div class="modal-header">
                 <h2>Logout?</h2>
-                <button class="modal-close" id="modal-logout-close" aria-label="Close">✕</button>
+                <button class="modal-close" id="modal-logout-close" aria-label="Close">X</button>
             </div>
             <p class="modal-message">Your data is saved locally and will be available when you log back in.</p>
             <div class="modal-actions">
