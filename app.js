@@ -606,6 +606,7 @@ const db = firebase.firestore();
 
  // ===== NAVIGATION =====
  function showView(viewId) {
+ window.scrollTo(0, 0);
  $$('.view').forEach(v => v.classList.remove('active'));
  $(viewId).classList.add('active');
 
