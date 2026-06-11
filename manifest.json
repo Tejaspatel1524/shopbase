@@ -4,8 +4,8 @@
     "description": "Smart Customer Management for Shopkeepers. Track customers, purchases, and payment history.",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#0a0e1a",
-    "theme_color": "#0a0e1a",
+    "background_color": "#090d16",
+    "theme_color": "#090d16",
     "orientation": "portrait",
     "icons": [
         {
