@@ -21,6 +21,7 @@ CustBook is a smart, mobile-friendly customer management application designed sp
 
 ## Getting Started
 
+
 1. Clone or download the repository.
 2. Open `index.html` in any modern web browser or serve it via a local development server (e.g., `Live Server` extension in VS Code).
 3. Follow the onboarding flow to set up your shop profile and start managing your customers!
